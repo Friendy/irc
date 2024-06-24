@@ -15,23 +15,36 @@
 #include <unistd.h>
 #include <netinet/in.h>
 #include <signal.h>
+#include <vector>
+#include <map>
 #include "Err.hpp"
+#include "Channel.hpp"
+#include "User.hpp"
 
 class IrcServ {
 
 private:
-	int _data;
+	std::vector<int> _fds;
+	std::map<const int, User *> _users;
+	struct sockaddr _dest_addr;
+	int _listenfd;
+	std::string _pass;
 
 	void create_hint(struct addrinfo *hint);
-	void send_msg(int *fd, std::string msg);
 	void setopt(int *sockfd, int level, int option, int optval);
+	void send_msg(int fd, std::string msg);
+	void send_msg(std::string msg);
 
 public:
-	int getData() const;
-	void setData(int data);
+	// int getData() const;
+	// void setData(int data);
 	void server_start(const char* protname, const char* port, const char* hostname);
+	void print_fds();
+	void print_users();
+	void accept_client();
 
 	IrcServ();
+	IrcServ(std::string pass);
 	IrcServ(IrcServ const &original);
 	IrcServ &operator=(IrcServ const &original);
 	~IrcServ();

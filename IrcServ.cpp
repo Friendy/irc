@@ -6,11 +6,16 @@ IrcServ::IrcServ()
 	// std::cout << "class created" << std::endl;
 }
 
+IrcServ::IrcServ(std::string pass)
+{
+	_pass = pass;
+}
+
 //Assignment operator:
 IrcServ &IrcServ::operator=(IrcServ const &original)
 {
 	if (this != &original)
-		this->_data = original._data;
+		this->_pass = original._pass;
 	return(*this);
 }
 
@@ -20,15 +25,15 @@ IrcServ::IrcServ(IrcServ const &original)
 }
 
 /*FUNCTIONS*/
-int IrcServ::getData() const
-{
-	return(this->_data);
-}
+// int IrcServ::getData() const
+// {
+// 	return(this->_data);
+// }
 
-void IrcServ::setData(int data)
-{
-	this->_data = data;
-}
+// void IrcServ::setData(int data)
+// {
+// 	this->_data = data;
+// }
 
 void IrcServ::create_hint(struct addrinfo *hint)
 {
@@ -43,31 +48,61 @@ void IrcServ::create_hint(struct addrinfo *hint)
 }
 
 
-void IrcServ::send_msg(int *fd, std::string msg)
+void IrcServ::send_msg(int fd, std::string msg)
 {
-	ssize_t bytes_sent = send(*fd, msg.data(), msg.length(), 0);
+	std::cout << fd << " print fd" << "\n";
+	ssize_t bytes_sent = send(fd, msg.data(), msg.length(), 0);
 	if (bytes_sent == -1)
 		Err::handler(1, "sending message failed: ", msg);
 	else
 		std::cout << "Sent: " << msg << "\n";
-	std::cout << "size: " << msg.length() << "\n";
+}
+
+void IrcServ::send_msg(std::string msg)
+{
+	std::vector<int>::iterator it;
+	for (it = _fds.begin(); it < _fds.end(); ++it)
+		send_msg(*it, msg);
+}
+
+void IrcServ::print_fds()
+{
+	std::vector<int>::iterator it;
+	for (it = _fds.begin(); it < _fds.end(); ++it)
+		std::cout << "fd: " << *it << "\n";
+	std::cout << "end\n";
+}
+
+void IrcServ::print_users()
+{
+	std::map<const int, User *>::iterator it;
+	for (it = _users.begin(); it != _users.end(); ++it)
+		std::cout << "fd: " << it->first << " - " << it->second->getFd() << "\n";
+	std::cout << "end\n";
+}
+
+void IrcServ::accept_client()
+{
+	int fd;
+	socklen_t dest_len;
+	fd = accept(_listenfd, &_dest_addr, &dest_len);
+	if (fd == -1)
+	Err::handler(1, "new socket not created", "");
+	_fds.push_back(fd);
+	_users[fd] = new User(fd);
+	send_msg(fd, "Hello");
 }
 
 void IrcServ::server_start(const char* protname, const char* port, const char* hostname)
 {
 	struct protoent *prot_struct;
-	int sockfd;
-	int dest_sockfd;
 	int isbound;
 	int isset;
 	int err;
-	// struct sockaddr sock_struct;
-	struct sockaddr dest_addr;
 	// struct in_addr *ip_struct;
 	struct addrinfo *addr_info; //addrinfo structure
 	struct addrinfo hint;
-	socklen_t dest_len;
-
+	
 /* filling out address info structure
 some members of this structure will later be used
 as arguments for other functions
@@ -86,26 +121,24 @@ to get protocol number that will be used later
 		Err::handler(1, "no protocol ", protname);
 
 /* creating socket */
-	sockfd = socket(PF_INET, SOCK_STREAM, prot_struct->p_proto);
-	if (sockfd == -1)
+	_listenfd = socket(PF_INET, SOCK_STREAM, prot_struct->p_proto);
+	if (_listenfd  == -1)
 		Err::handler(1, "socket not created", "");
 
 /* binding socket to ip address and port */
 // std::cout << "len: " << addr_info->ai_addrlen << "\n";
-	isbound = bind(sockfd, addr_info->ai_addr, addr_info->ai_addrlen);
+	isbound = bind(_listenfd, addr_info->ai_addr, addr_info->ai_addrlen);
 	if (isbound == -1)
 		Err::handler(1, "not bound", "");
 
 	// std::cout << "pr: " << sock_struct.sa_len << "\n";
 
 /* listening */
-	isset = listen(sockfd, 128);
+	isset = listen(_listenfd, 128);
 	if (isset == -1)
 		Err::handler(1, "fail", "");
-dest_sockfd = accept(sockfd, &dest_addr, &dest_len);
-if (dest_sockfd == -1)
-	Err::handler(1, "new socket not created", "");
-send_msg(&dest_sockfd, "Hello");
+
+//to do save fds in the class and watch their count as many clients connect
 
 }
 
