@@ -6,7 +6,7 @@
 /*   By: mrubina <mrubina@student.42heilbronn.de    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/15 17:28:20 by mrubina           #+#    #+#             */
-/*   Updated: 2024/06/24 21:11:02 by mrubina          ###   ########.fr       */
+/*   Updated: 2024/06/27 20:30:19 by mrubina          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,7 +25,6 @@ void sig_handler(int)
 {
 	std::cout << "\nserver was interrupted\n";
 	std::cout << "quitting\n";
-	//TODO: close fds before quitting
 	exit(0);
 }
 

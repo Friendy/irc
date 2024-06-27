@@ -33,6 +33,11 @@ void User::setUser(std::string user)
 	this->_user = user;
 }
 
+void User::setAddress(struct sockaddr addr)
+{
+	this->_addr = addr;
+}
+
 const std::string User::getNick()
 {
 	return(this->_nick);

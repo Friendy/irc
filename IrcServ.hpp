@@ -7,7 +7,6 @@
 #include <stdio.h>
 #include <arpa/inet.h>
 #include <sys/types.h>
-#include <sys/socket.h>
 #include <err.h>
 #include <string>
 #include <iostream>
@@ -20,13 +19,16 @@
 #include "Err.hpp"
 #include "Channel.hpp"
 #include "User.hpp"
+#include <sys/stat.h>
 
 class IrcServ {
 
 private:
-	std::vector<int> _fds;
+	/* For now each user is a connection
+	and this connection's fd is used as a unique key
+	in case it's not possible anothe unique key will be introduced
+	 */
 	std::map<const int, User *> _users;
-	struct sockaddr _dest_addr;
 	int _listenfd;
 	std::string _pass;
 
@@ -39,9 +41,9 @@ public:
 	// int getData() const;
 	// void setData(int data);
 	void server_start(const char* protname, const char* port, const char* hostname);
+	void accept_client();
 	void print_fds();
 	void print_users();
-	void accept_client();
 
 	IrcServ();
 	IrcServ(std::string pass);

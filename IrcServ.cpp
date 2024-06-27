@@ -47,7 +47,7 @@ void IrcServ::create_hint(struct addrinfo *hint)
 	hint->ai_next = 0;
 }
 
-
+/* sending a message to a user */
 void IrcServ::send_msg(int fd, std::string msg)
 {
 	std::cout << fd << " print fd" << "\n";
@@ -58,18 +58,19 @@ void IrcServ::send_msg(int fd, std::string msg)
 		std::cout << "Sent: " << msg << "\n";
 }
 
+/* sending a message to all users */
 void IrcServ::send_msg(std::string msg)
 {
-	std::vector<int>::iterator it;
-	for (it = _fds.begin(); it < _fds.end(); ++it)
-		send_msg(*it, msg);
+	std::map<const int, User *>::iterator it;
+	for (it = _users.begin(); it != _users.end(); ++it)
+		send_msg(it->second->getFd(), msg);
 }
 
 void IrcServ::print_fds()
 {
-	std::vector<int>::iterator it;
-	for (it = _fds.begin(); it < _fds.end(); ++it)
-		std::cout << "fd: " << *it << "\n";
+	std::map<const int, User *>::iterator it;
+	for (it = _users.begin(); it != _users.end(); ++it)
+		std::cout << "fd: " << it->second->getFd() << "\n";
 	std::cout << "end\n";
 }
 
@@ -85,12 +86,15 @@ void IrcServ::accept_client()
 {
 	int fd;
 	socklen_t dest_len;
-	fd = accept(_listenfd, &_dest_addr, &dest_len);
+	struct sockaddr dest_addr;
+
+	fd = accept(_listenfd, &dest_addr, &dest_len);
 	if (fd == -1)
 	Err::handler(1, "new socket not created", "");
-	_fds.push_back(fd);
 	_users[fd] = new User(fd);
-	send_msg(fd, "Hello");
+	_users[fd]->setAddress(dest_addr);
+	send_msg(fd, "Hello\n");
+	send_msg("Let's welcome a new client\n");
 }
 
 void IrcServ::server_start(const char* protname, const char* port, const char* hostname)
