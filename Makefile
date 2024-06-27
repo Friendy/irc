@@ -12,7 +12,7 @@
 
 CXXFLAGS = -std=c++98 -Wall -Werror -Wextra
 
-SRC = main.cpp IrcServ.cpp Err.cpp User.cpp
+SRC = main.cpp IrcServ.cpp Err.cpp User.cpp Channel.cpp
 OBJ = $(SRC:.cpp=.o)
 NAME = ircserv
 

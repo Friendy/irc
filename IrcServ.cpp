@@ -93,21 +93,42 @@ void IrcServ::accept_client()
 	send_msg(fd, "Hello");
 }
 
+void IrcServ::setupSocket(const char* protname, long port_tmp) {
+	struct protoent *prot_struct;
+	int optVal = 1;
+	int optLen = sizeof(optVal);
+
+	std::cout << " test1" << "\n";
+	prot_struct = getprotobyname(protname);
+	if (prot_struct == NULL)
+		Err::handler(1, "no protocol ", protname);
+	_listenfd = socket(PF_INET, SOCK_STREAM, prot_struct->p_proto);
+	if (_listenfd  == -1)
+		Err::handler(1, "socket not created", "");
+	if (setsockopt(_listenfd, SOL_SOCKET, SO_REUSEADDR, (const char*)&optVal, optLen) == -1) {
+		Err::handler(1, "setsockopt error", "");
+	}
+
+}
+
 void IrcServ::server_start(const char* protname, const char* port, const char* hostname)
 {
-	struct protoent *prot_struct;
+	// struct protoent *prot_struct;
 	int isbound;
 	int isset;
 	int err;
 	// struct in_addr *ip_struct;
 	struct addrinfo *addr_info; //addrinfo structure
 	struct addrinfo hint;
+	long port_tmp = strtol(port, NULL, 0);
 	
 /* filling out address info structure
 some members of this structure will later be used
 as arguments for other functions
 addr_info->ai_addr
 */
+	if (port_tmp <= 0 || port_tmp > 65535)
+		Err::handler(1, "invalid port: ", port);
 	create_hint(&hint);
 	err = getaddrinfo(hostname, port, &hint, &addr_info);
 	if (err != 0)
@@ -116,14 +137,15 @@ addr_info->ai_addr
 /* getting protocol (filling out protocol structure)
 to get protocol number that will be used later
 */
-	prot_struct = getprotobyname(protname);
-	if (prot_struct == NULL)
-		Err::handler(1, "no protocol ", protname);
+	// prot_struct = getprotobyname(protname);
+	// if (prot_struct == NULL)
+	// 	Err::handler(1, "no protocol ", protname);
+	setupSocket(protname, port_tmp);
 
 /* creating socket */
-	_listenfd = socket(PF_INET, SOCK_STREAM, prot_struct->p_proto);
-	if (_listenfd  == -1)
-		Err::handler(1, "socket not created", "");
+	// _listenfd = socket(PF_INET, SOCK_STREAM, prot_struct->p_proto);
+	// if (_listenfd  == -1)
+	// 	Err::handler(1, "socket not created", "");
 
 /* binding socket to ip address and port */
 // std::cout << "len: " << addr_info->ai_addrlen << "\n";
@@ -146,7 +168,7 @@ void IrcServ::setopt(int *sockfd, int level, int option, int optval)
 {
 	int err;
 // socklen_t optlen;
-
+std::cout << " test" << "\n";
 err = setsockopt(*sockfd, level, option, &optval, sizeof(optval));
 // err = getsockopt(dest_sockfd, SOL_SOCKET, SO_KEEPALIVE, &optval, &optlen);
 if (err < 0)

@@ -26,7 +26,7 @@ void sig_handler(int)
 	std::cout << "\nserver was interrupted\n";
 	std::cout << "quitting\n";
 	//TODO: close fds before quitting
-	exit(0);
+	_exit(0);
 }
 
 

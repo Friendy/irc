@@ -20,6 +20,7 @@
 #include "Err.hpp"
 #include "Channel.hpp"
 #include "User.hpp"
+#include <stdlib.h>
 
 class IrcServ {
 
@@ -34,6 +35,7 @@ private:
 	void setopt(int *sockfd, int level, int option, int optval);
 	void send_msg(int fd, std::string msg);
 	void send_msg(std::string msg);
+	void setupSocket(const char* protname, long port_tmp);
 
 public:
 	// int getData() const;

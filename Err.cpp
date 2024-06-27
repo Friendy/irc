@@ -1,5 +1,7 @@
 #include "Err.hpp"
-
+#include <cerrno>
+#include <cstring>    // strerror
+#include <unistd.h>   // _exit
 /*CONSTRUCTORS*/
 Err::Err()
 {
@@ -34,7 +36,7 @@ void Err::handler(int exit_stat, std::string msg, std::string val)
 	std::cout << msg << val << "\n";
 	if (errno != 0)
 		std::cout << strerror(errno) << " " << errno << "\n";
-	exit(exit_stat);
+	_exit(exit_stat);
 }
 
 /*DESTRUCTOR*/
