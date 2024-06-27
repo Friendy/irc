@@ -130,7 +130,7 @@ void IrcServ::setupSocket(const char* protname, long port_tmp, struct addrinfo *
 	//sockaddr_in *ipv4 = (sockaddr_in *)addr_info->ai_addr;
 	//inet_pton(addr_info->ai_family, "0.0.0.0", &(ipv4->sin_addr));
 	inet_pton(AF_INET, "0.0.0.0", &hint.sin_addr);
-	memset(hint.sin_zero, '\0', sizeof(hint.sin_zero));
+	//memset(hint.sin_zero, '\0', sizeof(hint.sin_zero));
 
 	//addr_info->ai_addrlen = 0;
 	
@@ -140,6 +140,10 @@ void IrcServ::setupSocket(const char* protname, long port_tmp, struct addrinfo *
 	if (listen(_listenfd, SOMAXCONN) == -1) {
 		Err::handler(1, "listen error", "");
 	}
+	memset(_userPoll, 0, sizeof(_userPoll));
+	_activePoll = 1;
+	_userPoll[0].fd	= _listenfd;
+	_userPoll[0].events = POLLIN;
 }
 
 void IrcServ::server_start(const char* protname, const char* port, const char* hostname)
@@ -193,17 +197,6 @@ to get protocol number that will be used later
 
 //to do save fds in the class and watch their count as many clients connect
 
-}
-
-void IrcServ::setopt(int *sockfd, int level, int option, int optval)
-{
-	int err;
-// socklen_t optlen;
-std::cout << " test" << "\n";
-err = setsockopt(*sockfd, level, option, &optval, sizeof(optval));
-// err = getsockopt(dest_sockfd, SOL_SOCKET, SO_KEEPALIVE, &optval, &optlen);
-if (err < 0)
-	Err::handler(1, "no option change", "");
 }
 
 /*DESTRUCTOR*/
