@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
 	{
 		serv.accept_client();
 		serv.print_users();
-		// sleep(1);
+		sleep(1);
 	}
 }
 
