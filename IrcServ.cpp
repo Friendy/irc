@@ -85,9 +85,10 @@ void IrcServ::print_users()
 void IrcServ::accept_client()
 {
     int fd;
-    socklen_t dest_len = sizeof(_dest_addr);
+	struct sockaddr dest_addr;
+    socklen_t dest_len = sizeof(dest_addr);
 
-    fd = accept(_listenfd, (struct sockaddr *)&_dest_addr, &dest_len);
+    fd = accept(_listenfd, (struct sockaddr *)&dest_addr, &dest_len);
     if (fd == -1) {
         if (errno != EAGAIN && errno != EWOULDBLOCK) {
             Err::handler(1, "new socket not created", strerror(errno));
@@ -95,21 +96,10 @@ void IrcServ::accept_client()
         // If errno is EAGAIN or EWOULDBLOCK, just return and try again later
         return;
     }
-
-    _fds.push_back(fd);
-    _users[fd] = new User(fd);
-    send_msg(fd, "Hello");
-	int fd;
-	socklen_t dest_len;
-	struct sockaddr dest_addr;
-
-	fd = accept(_listenfd, &dest_addr, &dest_len);
-	if (fd == -1)
-	Err::handler(1, "new socket not created", "");
 	_users[fd] = new User(fd);
 	_users[fd]->setAddress(dest_addr);
 	send_msg(fd, "Hello\n");
-	send_msg("Let's welcome a new client\n");
+	// send_msg("Let's welcome a new client\n");
 }
 
 void IrcServ::setupSocket(const char* protname, long port_tmp, struct addrinfo *addr_info) {
@@ -118,7 +108,7 @@ void IrcServ::setupSocket(const char* protname, long port_tmp, struct addrinfo *
 	int optLen = sizeof(optVal);
 	int isbound;
 
-	std::cout << " test1" << "\n";
+	// std::cout << " test1" << "\n";
 	prot_struct = getprotobyname(protname);
 	if (prot_struct == NULL)
 		Err::handler(1, "no protocol ", protname);

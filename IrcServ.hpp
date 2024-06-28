@@ -30,7 +30,7 @@ class IrcServ {
 private:
 	/* For now each user is a connection
 	and this connection's fd is used as a unique key
-	in case it's not possible anothe unique key will be introduced
+	in case it's not possible another unique key will be introduced
 	 */
 	std::map<const int, User *> _users;
 	int _listenfd;
