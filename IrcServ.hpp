@@ -20,6 +20,10 @@
 #include "Channel.hpp"
 #include "User.hpp"
 #include <sys/stat.h>
+#include <stdlib.h>
+#include <cstring>
+#include <cerrno>
+#include <poll.h>
 
 class IrcServ {
 
@@ -31,11 +35,13 @@ private:
 	std::map<const int, User *> _users;
 	int _listenfd;
 	std::string _pass;
+	pollfd	_userPoll[SOMAXCONN];
+	nfds_t 	_activePoll; 
 
 	void create_hint(struct addrinfo *hint);
-	void setopt(int *sockfd, int level, int option, int optval);
 	void send_msg(int fd, std::string msg);
 	void send_msg(std::string msg);
+	void setupSocket(const char* protname, long port_tmp, struct addrinfo *addr_info);
 
 public:
 	// int getData() const;

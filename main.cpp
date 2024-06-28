@@ -6,7 +6,7 @@
 /*   By: mrubina <mrubina@student.42heilbronn.de    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/15 17:28:20 by mrubina           #+#    #+#             */
-/*   Updated: 2024/06/27 20:30:19 by mrubina          ###   ########.fr       */
+/*   Updated: 2024/06/28 16:44:55 by mrubina          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,7 +25,7 @@ void sig_handler(int)
 {
 	std::cout << "\nserver was interrupted\n";
 	std::cout << "quitting\n";
-	exit(0);
+	_exit(0);
 }
 
 
@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
 	{
 		serv.accept_client();
 		serv.print_users();
-		// sleep(1);
+		sleep(1);
 	}
 }
 
