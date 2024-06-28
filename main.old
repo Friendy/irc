@@ -1,0 +1,312 @@
+# **************************************************************************** #
+#                                                                              #
+#                                                         :::      ::::::::    #
+#    main.old                                           :+:      :+:    :+:    #
+#                                                     +:+ +:+         +:+      #
+#    By: mrubina <mrubina@student.42heilbronn.de    +#+  +:+       +#+         #
+#                                                 +#+#+#+#+#+   +#+            #
+#    Created: 2024/06/15 17:28:20 by mrubina           #+#    #+#              #
+#    Updated: 2024/06/27 19:50:08 by mrubina          ###   ########.fr        #
+#                                                                              #
+# **************************************************************************** #
+
+#include <netdb.h>
+#include <stdio.h>
+#include <arpa/inet.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <err.h>
+#include <string>
+#include <iostream>
+
+
+// socket, setsockopt, getsockname
+
+// inet_addr, inet_ntoa
+
+// getprotobyname, gethostbyname, getaddrinfo, freeaddrinfo,
+
+// bind, connect, listen, accept, 
+
+void socket_test(const char* protname)
+{
+	std::cout << "****** Testing functions: ******\n";
+	// std::cout << "gethostbyname\n";
+	struct protoent *prot_struct;
+	int sockfd;
+	int isbound;
+	int isset;
+	struct hostent *host_struct;
+	struct sockaddr sock_struct;
+	struct sockaddr_in sock_struct_in;
+	struct in_addr *ip_struct;
+	struct addrinfo *a_info_ptr; //addrinfo structure
+	in_addr_t ip_number;
+
+	
+
+//getting protocol (filling out protocol structure)
+	prot_struct = getprotobyname(protname);
+	if (prot_struct == NULL)
+		errx(1, "no protocol %s", protname);
+		//creating socket
+	sockfd = socket(PF_INET, SOCK_STREAM, prot_struct->p_proto);
+	// std::cout << "err: " << err << "\n";
+	std::cout << "pr: " << prot_struct->p_proto << "\n";
+	if (sockfd == -1)
+		errx(1, "socket not created %i ", errno);
+		//binding socket to ip address and port
+	// isbound = bind(sock, &sock_struct, 16);
+	// if (isbound == -1)
+	// 	errx(1, "not bound %i ", errno);
+	// std::cout << "pr: " << sock_struct.sa_len << "\n";
+	sock_struct_in.sin_addr = 
+	
+	int sock_name;
+	socklen_t address_len;
+	sock_name = getsockname(sockfd, &sock_struct, &address_len);
+	if (isset == -1)
+		errx(1, "fail sockname %i ", errno);
+	std::cout << "name: " << sock_name << "\n";
+	std::cout << "len: " << sock_struct.sa_data << "\n";
+	
+	std::cout << "len: " << address_len << "\n";
+	isset = listen(sockfd, 128);
+	if (isset == -1)
+		errx(1, "fail %i ", errno);
+	// isset = setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, NULL, 0);
+	// if (isset == -1)
+	// 	errx(1, "not set %i ", errno);
+	// isset = connect(sock, SOL_SOCKET, SO_REUSEADDR, NULL, 0);
+	// if (isset == -1)
+	// 	errx(1, "not set %i ", errno);
+	// host_struct = gethostbyname(hostname);
+	// if (host_struct != NULL)
+	// {
+	// 	std::cout << "****** Host structure filled out successfully ******\n";
+	// 	std::cout << "name: " << host_struct->h_name << "\n";
+	// 	std::cout << "type: " << host_struct->h_addrtype << "\n";
+	// 	std::cout << "test: " << htonl(inet_addr("169.254.52.88")) << "\n";
+	// 	std::cout << "test: " << htons(inet_addr("169.254.52.88")) << "\n";
+	// 	std::cout << "test: " << ntohs(inet_addr("169.254.52.88")) << "\n";
+	// 	std::cout << "test: " << ntohl(inet_addr("169.254.52.88")) << "\n";
+	// 	// std::cout << "test: " << inet_ntoa("169.254.52.88") << "\n";
+	// }
+	// else
+	// 	errx(1, "no name associated with %s", hostname);
+}
+
+// htons, htonl, ntohs, ntohl, ,
+void test(const char* hostname, const char* protname, const char* ipstr)
+{
+	struct hostent *host_struct;
+	struct in_addr *ip_struct;
+	struct addrinfo *a_info_ptr; //addrinfo structure
+	struct protoent *prot_struct;
+	in_addr_t ip_number;
+	int err;
+
+	std::cout << "****** Testing functions: ******\n";
+	std::cout << "getaddrinfo\n";
+	std::cout << "gethostbyname\n";
+	std::cout << "getprotobyname\n";
+	//filling out addrinfo structure
+	err = getaddrinfo(hostname, NULL, NULL, &a_info_ptr);
+	if (err == 0)
+	{
+		std::cout << "****** Addrinfo structure filled out successfully ******\n";
+		std::cout << "sock type: " << a_info_ptr->ai_socktype << "\n";
+		std::cout << "next sock type: " << a_info_ptr->ai_next->ai_socktype << "\n";
+		// std::cout << "next : " << a_info_ptr->ai_protocol << "\n";
+		std::cout << "this : " << a_info_ptr << "\n";
+		std::cout << "next : " << a_info_ptr->ai_next << "\n";
+	}
+	else
+		errx(1, "can't get info for %s", hostname);
+	
+
+	prot_struct = getprotobyname(protname);
+	if (prot_struct != NULL)
+	{
+		std::cout << "****** Protocol structure filled out successfully ******\n";
+		std::cout << "protocol name: " << prot_struct->p_name << "\n";
+		std::cout << "protocol alias: " << prot_struct->p_aliases[0] << "\n";
+		std::cout << "protocol number: " << prot_struct->p_proto << "\n";
+	}
+	else
+		errx(1, "no protocol associated with name %s", protname);
+		
+	ip_number = inet_addr(ipstr);
+	std::cout << "ip as integer: " << ip_number << "\n";
+	// if (prot_struct != NULL)
+	// {
+	// 	std::cout << "****** Protocol structure filled out successfully ******\n";
+	// 	std::cout << "protocol name: " << prot_struct->p_name << "\n";
+	// 	std::cout << "protocol alias: " << prot_struct->p_aliases[0] << "\n";
+	// 	std::cout << "protocol number: " << prot_struct->p_proto << "\n";
+	// }
+	// else
+	// 	errx(1, "no protocol associated with name %s", protname);
+	// filling out host structure
+}
+
+
+void host_test(const char* hostname)
+{
+	std::cout << "****** Testing functions: ******\n";
+	std::cout << "gethostbyname\n";
+	
+	struct hostent *host_struct;
+	struct in_addr *ip_struct;
+	struct addrinfo *a_info_ptr; //addrinfo structure
+	struct protoent *prot_struct;
+	in_addr_t ip_number;
+
+	host_struct = gethostbyname(hostname);
+	if (host_struct != NULL)
+	{
+		std::cout << "****** Host structure filled out successfully ******\n";
+		std::cout << "name: " << host_struct->h_name << "\n";
+		std::cout << "type: " << host_struct->h_addrtype << "\n";
+		std::cout << "test: " << htonl(inet_addr("169.254.52.88")) << "\n";
+		std::cout << "test80: " << htons(6667) << "\n";
+		std::cout << "test: " << ntohs(inet_addr("169.254.52.88")) << "\n";
+		std::cout << "test: " << ntohl(inet_addr("169.254.52.88")) << "\n";
+		// std::cout << "test: " << inet_ntoa("169.254.52.88") << "\n";
+	}
+	else
+		errx(1, "no name associated with %s", hostname);
+}
+
+void hint_test(const char* hostname)
+{
+	struct addrinfo hint;
+	struct addrinfo *a_info_ptr; //addrinfo structure
+	int err;
+
+	std::cout << "****** Testing functions: ******\n";
+	std::cout << "getaddrinfo\n";
+
+	// EAI_AGAIN     temporary failure in name resolution
+    //        EAI_BADFLAGS  invalid value for ai_flags
+    //        EAI_BADHINTS  invalid value for hints
+    //        EAI_FAIL      non-recoverable failure in name resolution
+    //        EAI_FAMILY    ai_family not supported
+    //        EAI_MEMORY    memory allocation failure
+    //        EAI_NONAME    hostname or servname not provided, or not known
+    //        EAI_OVERFLOW  argument buffer overflow
+    //        EAI_PROTOCOL  resolved protocol is unknown
+    //        EAI_SERVICE   servname not supported for ai_socktype
+    //        EAI_SOCKTYPE  ai_socktype not supported
+    //        EAI_SYSTEM    system error returned in errno
+
+	// std::cout << "pr : " << a_info_ptr->ai_family << "\n";
+	// std::cout << "sock type: " << a_info_ptr->ai_socktype << "\n";
+	hint.ai_socktype = SOCK_STREAM;
+	hint.ai_protocol = 0;
+	hint.ai_family = 0;
+	hint.ai_addr = 0;
+	hint.ai_addrlen = 0;
+	hint.ai_canonname = 0;
+	hint.ai_flags = 0;
+	hint.ai_next = 0;
+	hint.ai_protocol = 0;
+	//filling out addrinfo structure
+	err = getaddrinfo(hostname, NULL, &hint, &a_info_ptr);
+	std::cout << err << "\n";
+	if (err == 0)
+	{
+		std::cout << err << " ****** Addrinfo structure filled out successfully ******\n";
+		std::cout << "sock type: " << a_info_ptr->ai_socktype << "\n";
+		std::cout << "family : " << a_info_ptr->ai_family << "\n";
+	}
+	else
+		errx(1, "can't get info for %s", hostname);
+}
+
+
+void gethostname(const char *ipstr)
+{
+    struct in_addr ip;
+    struct hostent *hp;
+
+    if (!inet_aton(ipstr, &ip))//converting ip address in a string format to a structure
+       errx(1, "can't parse IP address %s", ipstr);//exits with value 1
+
+    if ((hp = gethostbyaddr((const void *)&ip, sizeof ip, AF_INET)) == NULL)//if the host with our address is found
+		errx(1, "no name associated with %s", ipstr);
+
+    printf("name associated with %s is %s\n", ipstr, hp->h_name);
+}
+
+int main()
+{
+	// gethostname("169.254.52.88");
+	 socket_test("tcp");
+	//  hint_test("2-e-1.local");
+	//  host_test("localhost");
+	// test("2-e-1.local", "TCP", "169.254.52.88");
+	// test("localhost");
+}
+
+//  [EACCES]           The requested address is protected, and the current user has
+//                         inadequate permission to access it.
+
+//      [EADDRINUSE]       The specified address is already in use.
+
+//      [EADDRNOTAVAIL]    The specified address is not available from the local
+//                         machine.
+
+//      [EAFNOSUPPORT]     address is not valid for the address family of socket.
+
+//      [EBADF]            socket is not a valid file descriptor.
+
+//      [EDESTADDRREQ]     socket is a null pointer.
+
+//      [EFAULT]           The address parameter is not in a valid part of the user
+//                         address space.
+
+//      [EINVAL]           socket is already bound to an address and the protocol does
+//                         not support binding to a new address.  Alternatively, socket
+//                         may have been shut down.
+
+//      [ENOTSOCK]         socket does not refer to a socket.
+
+//      [EOPNOTSUPP]       socket is not of a type that can be bound to an address.
+
+//      The following errors are specific to binding names in the UNIX domain.
+
+//      [EACCES]           A component of the path prefix does not allow searching or
+//                         the node's parent directory denies write permission.
+
+//      [EEXIST]           A file already exists at the pathname.  unlink(2) it first.
+
+//      [EIO]              An I/O error occurred while making the directory entry or
+//                         allocating the inode.
+
+//      [EISDIR]           An empty pathname was specified.
+
+// setopt(&sockfd, SOL_SOCKET, SO_KEEPALIVE, 1);
+// setopt(&sockfd, prot_struct->p_proto, TCP_KEEPALIVE, 60);
+// setopt(&sockfd, prot_struct->p_proto, TCP_KEEPINTVL, 10);
+// setopt(&sockfd, prot_struct->p_proto, TCP_KEEPCNT, 100);
+
+// std::cout << "len: " << dest_len << "\n";
+// std::cout << "addr: " << ((struct sockaddr_in *)&dest_addr)->sin_addr.s_addr << "\n";
+// std::cout << "family: " << ((struct sockaddr_in *)&dest_addr)->sin_len << "\n";
+// std::cout << "proto: " << prot_struct->p_proto << "\n";
+// std::cout << "family: " << ((struct sockaddr_in *)&dest_addr)->sin_len << "\n";
+// err = connect(dest_sockfd, &dest_addr, sizeof(struct sockaddr));
+// if (err== -1)
+// 		errx(1, "no connection %i ", errno);
+// free(buff);
+
+	struct stat *buf;
+	buf = new struct stat;
+	fstat(4, buf);
+	std::cout << "user id " << buf->st_uid << "\n";
+	std::cout << "dev " << buf->st_dev << "\n";
+	std::cout << "flags " << buf->st_flags << "\n";
+	std::cout << "gen " << buf->st_gen << "\n";
+	std::cout << "s " << buf->st_size << "\n";
+	delete(buf);
