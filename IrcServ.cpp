@@ -3,19 +3,25 @@
 /*CONSTRUCTORS*/
 IrcServ::IrcServ()
 {
-	// std::cout << "class created" << std::endl;
 }
 
 IrcServ::IrcServ(std::string pass)
 {
 	_pass = pass;
+	_commands["PASS"] = &IrcServ::fPass;
+	_commands["USER"] = &IrcServ::fUser;
+	_commands["NICK"] = &IrcServ::fNick;
 }
 
 //Assignment operator:
 IrcServ &IrcServ::operator=(IrcServ const &original)
 {
 	if (this != &original)
+	{
 		this->_pass = original._pass;
+		this->_commands = original._commands;
+		this-> _listenfd = original._listenfd;
+	}
 	return(*this);
 }
 
@@ -25,63 +31,8 @@ IrcServ::IrcServ(IrcServ const &original)
 }
 
 /*FUNCTIONS*/
-// int IrcServ::getData() const
-// {
-// 	return(this->_data);
-// }
 
-// void IrcServ::setData(int data)
-// {
-// 	this->_data = data;
-// }
-
-void IrcServ::create_hint(struct addrinfo *hint)
-{
-	hint->ai_socktype = SOCK_STREAM;
-	hint->ai_protocol = 0;
-	hint->ai_family = AF_INET;
-	hint->ai_addr = NULL;
-	hint->ai_addrlen = 0;
-	hint->ai_canonname = NULL;
-	hint->ai_flags = 0;
-	hint->ai_next = NULL;
-}
-
-/* sending a message to a user */
-void IrcServ::send_msg(int fd, std::string msg)
-{
-	std::cout << fd << " print fd" << "\n";
-	ssize_t bytes_sent = send(fd, msg.data(), msg.length(), 0);
-	if (bytes_sent == -1)
-		Err::handler(1, "sending message failed: ", msg);
-	else
-		std::cout << "Sent: " << msg << "\n";
-}
-
-/* sending a message to all users */
-void IrcServ::send_msg(std::string msg)
-{
-	std::map<const int, User *>::iterator it;
-	for (it = _users.begin(); it != _users.end(); ++it)
-		send_msg(it->second->getFd(), msg);
-}
-
-void IrcServ::print_fds()
-{
-	std::map<const int, User *>::iterator it;
-	for (it = _users.begin(); it != _users.end(); ++it)
-		std::cout << "fd: " << it->second->getFd() << "\n";
-	std::cout << "end\n";
-}
-
-void IrcServ::print_users()
-{
-	std::map<const int, User *>::iterator it;
-	for (it = _users.begin(); it != _users.end(); ++it)
-		std::cout << "fd: " << it->first << " - " << it->second->getFd() << "\n";
-	std::cout << "end\n";
-}
-
+/* ******Connection related functions********** */
 void IrcServ::accept_client()
 {
     int fd;
@@ -98,7 +49,8 @@ void IrcServ::accept_client()
     }
 	_users[fd] = new User(fd);
 	_users[fd]->setAddress(dest_addr);
-	send_msg(fd, "Hello\n");
+	send_msg(fd, "Hello\n");//will be removed after polling
+	
 	// send_msg("Let's welcome a new client\n");
 }
 
@@ -200,6 +152,193 @@ to get protocol number that will be used later
 //to do save fds in the class and watch their count as many clients connect
 
 }
+
+/* ******Message sending functions ********** */
+/* sending a message to a user */
+void IrcServ::send_msg(int fd, std::string msg)
+{
+	ssize_t bytes_sent = send(fd, msg.data(), msg.length(), 0);
+	if (bytes_sent == -1)
+		Err::handler(1, "sending message failed: ", msg);
+	else
+		std::cout << "Sent: " << msg << "\n";
+}
+
+/* sending a message to all users */
+void IrcServ::send_msg(std::string msg)
+{
+	std::map<const int, User *>::iterator it;
+	for (it = _users.begin(); it != _users.end(); ++it)
+		send_msg(it->second->getFd(), msg);
+}
+
+/* ******General message processing functions********** */
+//extracts command and parameters
+Command IrcServ::parseMsg(const std::string msg)
+{
+	size_t start;
+
+	start = msg.find_first_not_of(' '); //ignore starting spaces
+	Command com(get_next_word(msg, start));
+	while (start != std::string::npos)
+	{
+		start = msg.find(' ', start); //finding first space after previous word
+		if (start != std::string::npos)
+		{
+			start = msg.find_first_not_of(' ', start);//finding start of the current word
+			com.setParam(get_next_word(msg, start));
+		}
+	}
+	return (com);
+}
+
+/* for each user receives a message, processes it,
+creates response and sends it.
+later will be changed after polling: responses will be queued and then sent using another function
+*/
+void IrcServ::recieve_msg()
+{
+	char buf[512];
+	bzero(buf, 512);
+	std::string msg;
+	std::string response;
+
+	std::map<const int, User *>::iterator it;
+	for (it = _users.begin(); it != _users.end(); ++it)
+	{
+		// std::cout << "fd: " << it->first << " - " << it->second->getFd() << "\n";
+		recv(it->second->getFd(), buf, 512, 0);
+		msg = std::string(buf);
+		response = processMsg(*it->second, msg);
+		if (response != "")
+			send_msg(it->second->getFd(), addNewLine(response));
+		// std::cout << "msg: " << buf << "\n";
+		bzero(buf, 512);
+	}
+}
+
+/*
+trims message, saves it for the user, executes command using an appropriate function
+*/
+std::string IrcServ::processMsg(User &user, std::string msg)
+{
+	std::string response;
+	Command com;
+
+	trimMsg(msg);
+	user.setLastMsg(msg);
+	if (msg != "")
+	{
+		com = parseMsg(msg);
+		if (_commands.find(com.getCommand()) != _commands.end())
+			response = (this->*_commands[com.getCommand()])(com.getParams(), user);
+		else
+			response = "command not found";
+		return(response);
+	}
+	else
+		return("");
+}
+
+/* ******Command functions****** */
+std::string IrcServ::fPass(std::vector<std::string> params, User &user)
+{
+	if (user.passGiven())
+			return("You have already provided the correct password");
+	if (params[0] == _pass)
+	{
+		user.givePass();
+		return("The password is correct. Now please provide your nick: NICK <nick>.");
+	}
+	else
+		return("The password is incorrect. Please try again");
+}
+
+std::string IrcServ::fNick(std::vector<std::string> params, User &user)
+{
+	std::string oldnick;
+
+	oldnick = user.getNick();
+	if (!user.passGiven())
+		return("Please provide the password first: PASS <password>");
+	//TODO check if this nick already exists
+	user.setNick(params[0]);
+	if (oldnick != "")
+		return("Your nick has been changed");
+	else
+		return("Now for the last step, add username: USER <username> <hostname> <servername> <realname>");
+}
+
+std::string IrcServ::fUser(std::vector<std::string> params, User &user)
+{
+	if (user.isRegistered())
+		return("You are already registered");
+	if (!user.passGiven())
+		return("Please provide the password first: PASS <password>");
+	else if (user.getNick() == "")
+		return("Please provide your nick first: NICK <nick>.");
+	//TODO check if this username already exists and add more parameters
+	user.setUser(params[0]);
+	user.registerUser();
+		return("You are now registered");
+}
+
+/* ******Helper functions****** */
+void IrcServ::create_hint(struct addrinfo *hint)
+{
+	hint->ai_socktype = SOCK_STREAM;
+	hint->ai_protocol = 0;
+	hint->ai_family = AF_INET;
+	hint->ai_addr = NULL;
+	hint->ai_addrlen = 0;
+	hint->ai_canonname = NULL;
+	hint->ai_flags = 0;
+	hint->ai_next = NULL;
+}
+
+void IrcServ::print_fds()
+{
+	std::map<const int, User *>::iterator it;
+	for (it = _users.begin(); it != _users.end(); ++it)
+		std::cout << "fd: " << it->second->getFd() << "\n";
+	std::cout << "end\n";
+}
+
+void IrcServ::print_users()
+{
+	std::map<const int, User *>::iterator it;
+	for (it = _users.begin(); it != _users.end(); ++it)
+		std::cout << "fd: " << it->first << " - " << it->second->getFd() << "\n";
+	std::cout << "end\n";
+}
+
+std::string IrcServ::get_next_word(std::string str, size_t start)
+{
+	size_t end;
+
+	end = str.find(' ', start);
+	if (end != std::string::npos)
+		return (str.substr(start, end - start));
+	else
+		return (str.substr(start, str.length() - start));
+}
+
+void IrcServ::trimMsg(std::string &msg)
+{
+	if (*(msg.rbegin()) == '\n')
+		msg.erase(msg.length() - 1);
+	if (*(msg.rbegin()) == 13)
+		msg.erase(msg.length() - 1);
+	if (msg != "")
+		std::cout << "Recieved: " << msg << "\n";
+}
+
+std::string IrcServ::addNewLine(std::string &str)
+{
+	str.insert(str.end(), '\n');
+	return(str);
+}
+
 
 /*DESTRUCTOR*/
 IrcServ::~IrcServ(){}

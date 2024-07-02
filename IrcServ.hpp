@@ -33,21 +33,48 @@ private:
 	in case it's not possible another unique key will be introduced
 	 */
 	std::map<const int, User *> _users;
+	std::map<const std::string, std::string (IrcServ::*)(std::vector<std::string> params, User &user)> _commands;
 	int _listenfd;
 	std::string _pass;
 	pollfd	_userPoll[SOMAXCONN];
-	nfds_t 	_activePoll; 
+	nfds_t 	_activePoll;
 
-	void create_hint(struct addrinfo *hint);
-	void send_msg(int fd, std::string msg);
-	void send_msg(std::string msg);
+	//TODO: implement send queue
+	//TODO: update introductory message: should contain:
+	//TODO: user count, sever name and version
+	//TODO: nick history
+
+
+	/* ******Connection related functions********** */
 	void setupSocket(const char* protname, long port_tmp, struct addrinfo *addr_info);
 
+	/* ******Message sending functions ********** */
+	void send_msg(int fd, std::string msg);
+	void send_msg(std::string msg);
+
+	/* ******General message processing functions********** */
+	std::string processMsg(User &user, std::string msg);
+	Command parseMsg(const std::string msg);
+
+	/* ******Command functions****** */
+	std::string fPass(std::vector<std::string> params, User &user);
+	std::string fUser(std::vector<std::string> params, User &user);
+	std::string fNick(std::vector<std::string> params, User &user);
+
+	/* ******Helper functions****** */
+	void create_hint(struct addrinfo *hint);
+	std::string addNewLine(std::string &str);
+	void trimMsg(std::string &msg);
+	std::string get_next_word(std::string str, size_t start);
+
 public:
-	// int getData() const;
-	// void setData(int data);
+	void recieve_msg();
+
+	/* ******Connection related functions********** */
 	void server_start(const char* protname, const char* port, const char* hostname);
 	void accept_client();
+
+	/* ******Helper functions****** */
 	void print_fds();
 	void print_users();
 

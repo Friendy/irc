@@ -6,7 +6,7 @@
 /*   By: mrubina <mrubina@student.42heilbronn.de    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/15 17:28:20 by mrubina           #+#    #+#             */
-/*   Updated: 2024/06/28 17:58:33 by mrubina          ###   ########.fr       */
+/*   Updated: 2024/06/30 22:21:42 by mrubina          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -39,8 +39,9 @@ int main(int argc, char *argv[])
 	while (1)
 	{
 		serv.accept_client();
+		serv.recieve_msg();
 		// serv.print_users();
-		// sleep(1);
+		sleep(1);
 	}
 }
 
