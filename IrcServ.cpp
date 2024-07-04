@@ -32,27 +32,44 @@ IrcServ::IrcServ(IrcServ const &original)
 
 /*FUNCTIONS*/
 
+void IrcServ::addToPoll(int fd) {
+	if (_activePoll >= SOMAXCONN)
+		Err::handler(1, "too many connections", "");
+	_userPoll[_activePoll].fd = fd;
+	_userPoll[_activePoll].events = POLLIN;
+	_activePoll++;
+}
+
 /* ******Connection related functions********** */
-void IrcServ::accept_client()
-{
+void IrcServ::accept_client() {
     int fd;
-	struct sockaddr dest_addr;
+    struct sockaddr_in dest_addr;
     socklen_t dest_len = sizeof(dest_addr);
+    char host[INET_ADDRSTRLEN];
 
     fd = accept(_listenfd, (struct sockaddr *)&dest_addr, &dest_len);
     if (fd == -1) {
         if (errno != EAGAIN && errno != EWOULDBLOCK) {
             Err::handler(1, "new socket not created", strerror(errno));
         }
-        // If errno is EAGAIN or EWOULDBLOCK, just return and try again later
         return;
     }
-	_users[fd] = new User(fd);
-	_users[fd]->setAddress(dest_addr);
-	send_msg(fd, "Hello\n");//will be removed after polling
-	
-	// send_msg("Let's welcome a new client\n");
+
+    inet_ntop(AF_INET, &dest_addr.sin_addr, host, INET_ADDRSTRLEN);
+    std::string hostmask(host);
+    std::cout << "User hostmask: " << hostmask << std::endl;
+    std::cout << "User connected on fd: " << fd << std::endl;
+
+    _users[fd] = new User(fd, hostmask);
+    _users[fd]->setAddress(dest_addr);
+
+    addToPoll(fd);
+
+    send_msg(fd, "Hello\n");
+
+    std::cout << "Client connected" << std::endl;
 }
+
 
 void IrcServ::setupSocket(const char* protname, long port_tmp, struct addrinfo *addr_info) {
 	struct protoent *prot_struct;
@@ -106,6 +123,7 @@ void IrcServ::server_start(const char* protname, const char* port, const char* h
 	// int isbound;
 	//int isset;
 	int err;
+	int pollReturn;
 	// struct in_addr *ip_struct;
 	struct addrinfo *addr_info; //addrinfo structure
 	struct addrinfo hint;
@@ -150,6 +168,15 @@ to get protocol number that will be used later
 	// 	Err::handler(1, "fail", "");
 
 //to do save fds in the class and watch their count as many clients connect
+
+	while(1)
+	{
+		pollReturn = poll(_userPoll, _activePoll, 5000);
+		if (pollReturn == -1)
+			Err::handler(1, "poll error", "");
+		accept_client();
+		recieve_msg();
+	}
 
 }
 

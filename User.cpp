@@ -22,6 +22,12 @@ User::User(User const &original) : _fd(original._fd)
 	*this = original;
 }
 
+User::User(int fd, const std::string &hostmask) : _fd(fd), _hostmask(hostmask) {
+    std::cout << "User created with fd: " << fd << " and hostmask: " << hostmask << std::endl;
+    memset(&_address, 0, sizeof(_address));
+}
+
+
 /*FUNCTIONS*/
 const std::string User::getUser()
 {
@@ -33,9 +39,9 @@ void User::setUser(std::string user)
 	this->_user = user;
 }
 
-void User::setAddress(struct sockaddr addr)
+void User::setAddress(struct sockaddr_in addr)
 {
-	this->_addr = addr;
+	_address = addr;
 }
 
 const std::string User::getNick()

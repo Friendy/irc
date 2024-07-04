@@ -4,6 +4,8 @@
 # include <iostream>
 #include <sys/socket.h>
 #include "Command.hpp"
+#include <cstring>
+#include <netinet/in.h>
 
 class User {
 
@@ -12,15 +14,17 @@ private:
 	std::string _nick;
 	std::string _last_msg; //last recieved message
 	const int _fd;
+	std::string _hostmask;
 	struct sockaddr _addr;
 	bool _isregistered;
 	bool _passgiven;
+	struct sockaddr_in _address;
 
 public:
 	const std::string getUser();
 	const std::string getLastMsg();
 	void setUser(std::string user);
-	void setAddress(struct sockaddr addr);
+	void setAddress(struct sockaddr_in addr);
 	const std::string getNick();
 	void setNick(std::string nick);
 	int getFd();
@@ -34,6 +38,7 @@ public:
 
 	// User();
 	User(int fd);
+	User(int fd, const std::string &hostmask);
 	User(User const &original);
 	User &operator=(User const &original);
 	~User();

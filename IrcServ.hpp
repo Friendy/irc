@@ -73,6 +73,7 @@ public:
 	/* ******Connection related functions********** */
 	void server_start(const char* protname, const char* port, const char* hostname);
 	void accept_client();
+	void addToPoll(int fd);
 
 	/* ******Helper functions****** */
 	void print_fds();
