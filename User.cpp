@@ -4,7 +4,7 @@
 // User::User(){}
 
 
-User::User(int fd) : _fd(fd), _isregistered(false), _passgiven(false){};
+User::User(int fd) : _fd(fd), _isregistered(false), _passgiven(false), _host("127.0.0.1"){};
 
 //Assignment operator:
 User &User::operator=(User const &original)
@@ -13,6 +13,7 @@ User &User::operator=(User const &original)
 	{
 		this->_user = original._user;
 		this->_nick = original._nick;
+		this->_host = original._host;
 	}
 	return(*this);
 }
@@ -41,6 +42,22 @@ void User::setAddress(struct sockaddr addr)
 const std::string User::getNick()
 {
 	return(this->_nick);
+}
+
+const std::string User::getHost()
+{
+	return(this->_host);
+}
+
+const std::string User::getFullName()
+{
+	std::string name;
+	name = getNick();
+	name.append("!");
+	name.append(getUser());
+	name.append("@");
+	name.append(getHost());
+	return(name);
 }
 
 int User::getFd()

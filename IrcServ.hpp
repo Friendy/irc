@@ -10,6 +10,7 @@
 #include <err.h>
 #include <string>
 #include <iostream>
+#include <sstream>
 #include <fcntl.h>
 #include <unistd.h>
 #include <netinet/in.h>
@@ -19,6 +20,7 @@
 #include "Err.hpp"
 #include "Channel.hpp"
 #include "User.hpp"
+#include "defines.hpp"
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <cstring>
@@ -34,7 +36,10 @@ private:
 	 */
 	std::map<const int, User *> _users;
 	std::map<const std::string, std::string (IrcServ::*)(std::vector<std::string> params, User &user)> _commands;
+	std::map<const std::string, int> _nicks;
+	std::map<const int, std::string> _codes;
 	int _listenfd;
+	const std::string _server_name;
 	std::string _pass;
 	pollfd	_userPoll[SOMAXCONN];
 	nfds_t 	_activePoll;
@@ -43,6 +48,34 @@ private:
 	//TODO: update introductory message: should contain:
 	//TODO: user count, sever name and version
 	//TODO: nick history
+	//TODO PING nick
+
+	/* 
+What needs to be done
+
+	1. polling
+	2. send queue
+	3. nick history
+	4. parsing
+	commands
+	Registration:
+	PASS
+	USER
+	NICK
+	Channels:
+	JOIN
+	KICK
+	INVITE
+	TOPIC
+	Messaging:
+	PRIVMSG
+
+	Quiting:
+	PART
+	QUIT
+
+	Ctrl D for incomplete messages
+	 */
 
 
 	/* ******Connection related functions********** */
@@ -51,6 +84,9 @@ private:
 	/* ******Message sending functions ********** */
 	void send_msg(int fd, std::string msg);
 	void send_msg(std::string msg);
+	std::string buildMsg(const std::string msg, User to, int code);
+	std::string welcome(User user);
+	std::string buildNotice(const std::string msg, std::string type, int code);
 
 	/* ******General message processing functions********** */
 	std::string processMsg(User &user, std::string msg);
