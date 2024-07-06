@@ -10,7 +10,7 @@
 #                                                                              #
 # **************************************************************************** #
 
-CXXFLAGS = -std=c++98 -Wall -Werror -Wextra
+CXXFLAGS = -std=c++98
 
 SRC = main.cpp IrcServ.cpp Err.cpp User.cpp Channel.cpp Command.cpp
 OBJ = $(SRC:.cpp=.o)

@@ -12,6 +12,7 @@ class User {
 private:
 	std::string _user;
 	std::string _nick;
+	std::string _host;
 	std::string _last_msg; //last recieved message
 	const int _fd;
 	std::string _hostmask;
@@ -26,6 +27,8 @@ public:
 	void setUser(std::string user);
 	void setAddress(struct sockaddr_in addr);
 	const std::string getNick();
+	const std::string getHost();
+	const std::string getFullName();
 	void setNick(std::string nick);
 	int getFd();
 	// const std::string getMsg(std::string msg);

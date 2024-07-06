@@ -5,12 +5,17 @@ IrcServ::IrcServ()
 {
 }
 
-IrcServ::IrcServ(std::string pass)
+IrcServ::IrcServ(std::string pass) : _server_name("irc.server.com")
 {
 	_pass = pass;
 	_commands["PASS"] = &IrcServ::fPass;
 	_commands["USER"] = &IrcServ::fUser;
 	_commands["NICK"] = &IrcServ::fNick;
+	_codes[RPL_WELCOME] = "RPL_WELCOME";
+	_codes[ERR_UNKNOWNCOMMAND] = "ERR_UNKNOWNCOMMAND";
+	_codes[ERR_ALREADYREGISTRED] = "ERR_ALREADYREGISTRED";
+	_codes[ERR_NEEDMOREPARAMS] = "ERR_NEEDMOREPARAMS";
+	_codes[ERR_PASSWDMISMATCH] = "ERR_PASSWDMISMATCH";
 }
 
 //Assignment operator:
@@ -199,6 +204,49 @@ void IrcServ::send_msg(std::string msg)
 		send_msg(it->second->getFd(), msg);
 }
 
+std::string IrcServ::buildNotice(const std::string msg, std::string type, int code)
+{
+	std::stringstream ss;
+	std::string new_msg;
+
+	ss << ":" << _server_name;
+	ss << " " << type;
+	if (code != 0)
+		ss << " " << code  << " " << _codes[code];
+	if (msg != "")
+		ss << " :" << msg;
+	std::getline(ss, new_msg);
+	return (new_msg);
+}
+
+std::string IrcServ::buildMsg(const std::string msg, User to, int code)
+{
+	std::stringstream ss;
+	std::string new_msg;
+
+	ss << " PRIVMSG " << to.getNick();
+	if (code != 0)
+		ss << " " << code  << " " << _codes[code];
+	if (msg != "")
+		ss << " :" << msg;
+	std::getline(ss, new_msg);
+	return (new_msg);
+// :irc.server.com NOTICE 462 ERR_ALREADYREGISTRED
+// :nick!user@127.0.0.1 PRIVMSG nick :msg
+}
+
+std::string IrcServ::welcome(User user)
+{
+	std::stringstream ss;
+	std::string new_msg;
+
+	ss << ":" << _server_name << " 001 " << user.getNick();
+	ss << " :" << "Welcome to the Internet Relay Network " << user.getFullName();
+	std::cout << "TEST" << std::endl;
+	std::getline(ss, new_msg);
+	return (new_msg);
+}
+
 /* ******General message processing functions********** */
 //extracts command and parameters
 Command IrcServ::parseMsg(const std::string msg)
@@ -207,6 +255,12 @@ Command IrcServ::parseMsg(const std::string msg)
 
 	start = msg.find_first_not_of(' '); //ignore starting spaces
 	Command com(get_next_word(msg, start));
+	/* 	//TODO add parsing for join, PRIVMSG
+	PRIVMSG #channel :msg
+	:nick!user@127.0.0.1 PRIVMSG #channel :msg
+	:nick!user@127.0.0.1 PRIVMSG nick :msg
+	NOTICE RPL_WELCOME :LAGCHECK 1720120129566735-yeah-:)
+	*/
 	while (start != std::string::npos)
 	{
 		start = msg.find(' ', start); //finding first space after previous word
@@ -246,6 +300,7 @@ void IrcServ::recieve_msg()
 
 /*
 trims message, saves it for the user, executes command using an appropriate function
+CAP command ignored because
 */
 std::string IrcServ::processMsg(User &user, std::string msg)
 {
@@ -257,10 +312,15 @@ std::string IrcServ::processMsg(User &user, std::string msg)
 	if (msg != "")
 	{
 		com = parseMsg(msg);
+		if (com.getCommand() == "CAP")
+			return("");
+		std::cout << "Recieved: " << msg << "\n";
+		if (com.getCommand() == "NOTICE")
+			return("");
 		if (_commands.find(com.getCommand()) != _commands.end())
 			response = (this->*_commands[com.getCommand()])(com.getParams(), user);
 		else
-			response = "command not found";
+			response = "421 ERR_UNKNOWNCOMMAND\n";
 		return(response);
 	}
 	else
@@ -271,14 +331,17 @@ std::string IrcServ::processMsg(User &user, std::string msg)
 std::string IrcServ::fPass(std::vector<std::string> params, User &user)
 {
 	if (user.passGiven())
-			return("You have already provided the correct password");
+		return(buildNotice("You may not reregister", "NOTICE", ERR_ALREADYREGISTRED));
+	if (params.empty())
+		return(buildNotice("PASS :Not enough parameters", "NOTICE", ERR_NEEDMOREPARAMS));
 	if (params[0] == _pass)
 	{
 		user.givePass();
-		return("The password is correct. Now please provide your nick: NICK <nick>.");
+		// return(":irc.server.com NOTICE :The password is correct. Now please provide your nick: NICK <nick>.");
+		return(buildNotice("The password is correct. Now please provide your nick: NICK <nick>.", "NOTICE", 0));
 	}
 	else
-		return("The password is incorrect. Please try again");
+		return(buildNotice("The password is incorrect. Please try again", "NOTICE", ERR_PASSWDMISMATCH));
 }
 
 std::string IrcServ::fNick(std::vector<std::string> params, User &user)
@@ -287,27 +350,42 @@ std::string IrcServ::fNick(std::vector<std::string> params, User &user)
 
 	oldnick = user.getNick();
 	if (!user.passGiven())
-		return("Please provide the password first: PASS <password>");
-	//TODO check if this nick already exists
-	user.setNick(params[0]);
-	if (oldnick != "")
-		return("Your nick has been changed");
+		// return("Please provide the password first: PASS <password>");
+		return(buildNotice("Please provide the password first: PASS <password>", "NOTICE", 0));
+		
+	//TODO check if nick characters are all allowed
+	if (_nicks.find(params[0]) != _nicks.end())
+		// return("Error: Nickname is already in use");
+		return(buildNotice("Nickname is already in use!", "NOTICE", ERR_NICKNAMEINUSE));
 	else
-		return("Now for the last step, add username: USER <username> <hostname> <servername> <realname>");
+	{
+		user.setNick(params[0]);
+		_nicks[params[0]] = user.getFd();
+	}
+	if (oldnick != "")
+		return(buildNotice("Your nick has been changed", "NOTICE", 0));
+		// return("Your nick has been changed");
+	else
+		// return("Now for the last step, add username: USER <username> <hostname> <servername> <realname>");
+		return(buildNotice("Now for the last step, add username: USER <username> 0 * <:realname>", "NOTICE", 0));
 }
 
 std::string IrcServ::fUser(std::vector<std::string> params, User &user)
 {
 	if (user.isRegistered())
-		return("You are already registered");
+		return(buildNotice("You may not reregister", "NOTICE", ERR_ALREADYREGISTRED));
 	if (!user.passGiven())
-		return("Please provide the password first: PASS <password>");
+		return(buildNotice("Please provide the password first: PASS <password>", "NOTICE", 0));
 	else if (user.getNick() == "")
-		return("Please provide your nick first: NICK <nick>.");
-	//TODO check if this username already exists and add more parameters
+		return(buildNotice("Please provide your nick first: NICK <nick>.", "NOTICE", 0));
+	//TODO add more parameters
 	user.setUser(params[0]);
 	user.registerUser();
-		return("You are now registered");
+	// return("irc.server.com NOTICE 001 RPL_WELCOME");
+		return(welcome(user));
+		// return(":irc.server.com 001");
+		// return(":nick!user@127.0.0.1 PRIVMSG nick :msg");
+		// :nick!user@127.0.0.1 PRIVMSG nick :msg
 }
 
 /* ******Helper functions****** */
@@ -356,8 +434,6 @@ void IrcServ::trimMsg(std::string &msg)
 		msg.erase(msg.length() - 1);
 	if (*(msg.rbegin()) == 13)
 		msg.erase(msg.length() - 1);
-	if (msg != "")
-		std::cout << "Recieved: " << msg << "\n";
 }
 
 std::string IrcServ::addNewLine(std::string &str)
