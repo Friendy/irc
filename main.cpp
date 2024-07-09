@@ -40,6 +40,7 @@ int main(int argc, char *argv[])
 	{
 		serv.accept_client();
 		serv.recieve_msg();
+		// serv.test();
 		// serv.print_users();
 		sleep(1);
 	}

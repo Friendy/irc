@@ -75,6 +75,7 @@ What needs to be done
 	QUIT
 
 	Ctrl D for incomplete messages
+
 	 */
 
 
@@ -86,16 +87,19 @@ What needs to be done
 	void send_msg(std::string msg);
 	std::string buildMsg(const std::string msg, User to, int code);
 	std::string welcome(User user);
-	std::string buildNotice(const std::string msg, std::string type, int code);
+	std::string buildNotice(const std::string msg, int code);
 
 	/* ******General message processing functions********** */
 	std::string processMsg(User &user, std::string msg);
 	Command parseMsg(const std::string msg);
+	void delete_user(std::map<const int, User *>::iterator &it);
 
 	/* ******Command functions****** */
 	std::string fPass(std::vector<std::string> params, User &user);
 	std::string fUser(std::vector<std::string> params, User &user);
 	std::string fNick(std::vector<std::string> params, User &user);
+	std::string fPing(std::vector<std::string> params, User &user);
+	std::string fQuit(std::vector<std::string> params, User &user);
 
 	/* ******Helper functions****** */
 	void create_hint(struct addrinfo *hint);
