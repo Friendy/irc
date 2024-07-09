@@ -6,11 +6,12 @@
 #    By: mrubina <mrubina@student.42heilbronn.de    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/11/12 18:35:29 by mrubina           #+#    #+#              #
-#    Updated: 2024/06/29 00:23:50 by mrubina          ###   ########.fr        #
+#    Updated: 2024/07/05 00:31:22 by mrubina          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
-CXXFLAGS = -std=c++98
+CXXFLAGS = -std=c++98 
+# -Wall -Werror -Wextra
 
 SRC = main.cpp IrcServ.cpp Err.cpp User.cpp Channel.cpp Command.cpp
 OBJ = $(SRC:.cpp=.o)

@@ -10,6 +10,7 @@
 #include <err.h>
 #include <string>
 #include <iostream>
+#include <sstream>
 #include <fcntl.h>
 #include <unistd.h>
 #include <netinet/in.h>
@@ -19,6 +20,7 @@
 #include "Err.hpp"
 #include "Channel.hpp"
 #include "User.hpp"
+#include "defines.hpp"
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <cstring>
@@ -38,7 +40,10 @@ private:
 	std::map<const std::string, std::string (IrcServ::*)(std::vector<std::string> params, User &user)> _commands;
 	std::map<const std::string, int> _nicks;
 	std::map<const int, std::string> _codes;
+	std::map<const std::string, int> _nicks;
+	std::map<const int, std::string> _codes;
 	int _listenfd;
+	const std::string _server_name;
 	const std::string _server_name;
 	std::string _pass;
 	pollfd	_userPoll[SOMAXCONN];
@@ -48,10 +53,11 @@ private:
 	//TODO: update introductory message: should contain:
 	//TODO: user count, sever name and version
 	//TODO: nick history
-		//TODO PING nick
+	//TODO PING nick
 
 	/* 
 What needs to be done
+
 	1. polling
 	2. send queue
 	3. nick history
@@ -68,10 +74,13 @@ What needs to be done
 	TOPIC
 	Messaging:
 	PRIVMSG
+
 	Quiting:
 	PART
 	QUIT
+
 	Ctrl D for incomplete messages
+
 	 */
 
 
@@ -83,16 +92,19 @@ What needs to be done
 	void send_msg(std::string msg);
 	std::string buildMsg(const std::string msg, User to, int code);
 	std::string welcome(User user);
-	std::string buildNotice(const std::string msg, std::string type, int code);
+	std::string buildNotice(const std::string msg, int code);
 
 	/* ******General message processing functions********** */
 	std::string processMsg(User &user, std::string msg);
 	Command parseMsg(const std::string msg);
+	void delete_user(std::map<const int, User *>::iterator &it);
 
 	/* ******Command functions****** */
 	std::string fPass(std::vector<std::string> params, User &user);
 	std::string fUser(std::vector<std::string> params, User &user);
 	std::string fNick(std::vector<std::string> params, User &user);
+	std::string fPing(std::vector<std::string> params, User &user);
+	std::string fQuit(std::vector<std::string> params, User &user);
 
 	/* ******Helper functions****** */
 	void create_hint(struct addrinfo *hint);

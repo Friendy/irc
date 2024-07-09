@@ -11,6 +11,8 @@ IrcServ::IrcServ(std::string pass) : _server_name("irc.server.com")
 	_commands["PASS"] = &IrcServ::fPass;
 	_commands["USER"] = &IrcServ::fUser;
 	_commands["NICK"] = &IrcServ::fNick;
+	_commands["PING"] = &IrcServ::fPing;
+	_commands["QUIT"] = &IrcServ::fQuit;
 	_codes[RPL_WELCOME] = "RPL_WELCOME";
 	_codes[ERR_UNKNOWNCOMMAND] = "ERR_UNKNOWNCOMMAND";
 	_codes[ERR_ALREADYREGISTRED] = "ERR_ALREADYREGISTRED";
@@ -70,7 +72,8 @@ void IrcServ::accept_client() {
 
     addToPoll(fd);
 
-    send_msg(fd, "Hello\n");
+    send_msg(fd, "Hello\r\n");//will be removed after polling
+	// send_msg(fd, "001 RPL_WELCOME \n");
 
     std::cout << "Client connected" << std::endl;
 }
@@ -173,7 +176,6 @@ to get protocol number that will be used later
 	// 	Err::handler(1, "fail", "");
 
 //to do save fds in the class and watch their count as many clients connect
-
 	while(1)
 	{
 		pollReturn = poll(_userPoll, _activePoll, 5000);
@@ -182,6 +184,17 @@ to get protocol number that will be used later
 		accept_client();
 		recieve_msg();
 	}
+
+}
+
+//deletes user from the server(after disconnecting it) setting its iterator to the next element
+void IrcServ::delete_user(std::map<const int, User *>::iterator &it)
+{
+	std::map<const int, User *>::iterator del_it = it;
+	it++;
+	_nicks.erase(del_it->second->getNick());
+	delete(del_it->second);
+	_users.erase(del_it);
 
 }
 
@@ -247,6 +260,47 @@ std::string IrcServ::welcome(User user)
 	return (new_msg);
 }
 
+std::string IrcServ::buildNotice(const std::string msg, int code)
+{
+	std::stringstream ss;
+	std::string new_msg;
+
+	ss << ":" << _server_name << " NOTICE";
+	if (code != 0)
+		ss << " " << code  << " " << _codes[code];
+	if (msg != "")
+		ss << " :" << msg;
+	std::getline(ss, new_msg);
+	return (new_msg);
+}
+
+std::string IrcServ::buildMsg(const std::string msg, User to, int code)
+{
+	std::stringstream ss;
+	std::string new_msg;
+
+	ss << " PRIVMSG " << to.getNick();
+	if (code != 0)
+		ss << " " << code  << " " << _codes[code];
+	if (msg != "")
+		ss << " :" << msg;
+	std::getline(ss, new_msg);
+	return (new_msg);
+// :irc.server.com NOTICE 462 ERR_ALREADYREGISTRED
+// :nick!user@127.0.0.1 PRIVMSG nick :msg
+}
+
+std::string IrcServ::welcome(User user)
+{
+	std::stringstream ss;
+	std::string new_msg;
+
+	ss << ":" << _server_name << " 001 " << user.getNick();
+	ss << " :" << "Welcome to the Internet Relay Network " << user.getFullName();
+	std::getline(ss, new_msg);
+	return (new_msg);
+}
+
 /* ******General message processing functions********** */
 //extracts command and parameters
 Command IrcServ::parseMsg(const std::string msg)
@@ -287,7 +341,6 @@ void IrcServ::recieve_msg()
 	std::map<const int, User *>::iterator it;
 	for (it = _users.begin(); it != _users.end(); ++it)
 	{
-		// std::cout << "fd: " << it->first << " - " << it->second->getFd() << "\n";
 		recv(it->second->getFd(), buf, 512, 0);
 		msg = std::string(buf);
 		response = processMsg(*it->second, msg);
@@ -295,6 +348,10 @@ void IrcServ::recieve_msg()
 			send_msg(it->second->getFd(), addNewLine(response));
 		// std::cout << "msg: " << buf << "\n";
 		bzero(buf, 512);
+		if (it->second->hasquitted())
+			delete_user(it);
+		if (it ==_users.end()) //this can happen if the last user is deleted
+			break;
 	}
 }
 
@@ -331,17 +388,16 @@ std::string IrcServ::processMsg(User &user, std::string msg)
 std::string IrcServ::fPass(std::vector<std::string> params, User &user)
 {
 	if (user.passGiven())
-		return(buildNotice("You may not reregister", "NOTICE", ERR_ALREADYREGISTRED));
+		return(buildNotice("You may not reregister", ERR_ALREADYREGISTRED));
 	if (params.empty())
-		return(buildNotice("PASS :Not enough parameters", "NOTICE", ERR_NEEDMOREPARAMS));
+		return(buildNotice("PASS :Not enough parameters", ERR_NEEDMOREPARAMS));
 	if (params[0] == _pass)
 	{
 		user.givePass();
-		// return(":irc.server.com NOTICE :The password is correct. Now please provide your nick: NICK <nick>.");
-		return(buildNotice("The password is correct. Now please provide your nick: NICK <nick>.", "NOTICE", 0));
+		return(buildNotice("The password is correct. Now please provide your nick: NICK <nick>.", 0));
 	}
 	else
-		return(buildNotice("The password is incorrect. Please try again", "NOTICE", ERR_PASSWDMISMATCH));
+		return(buildNotice("The password is incorrect. Please try again", ERR_PASSWDMISMATCH));
 }
 
 std::string IrcServ::fNick(std::vector<std::string> params, User &user)
@@ -349,35 +405,37 @@ std::string IrcServ::fNick(std::vector<std::string> params, User &user)
 	std::string oldnick;
 
 	oldnick = user.getNick();
+	if (params.empty())
+		return(buildNotice("", ERR_NONICKNAMEGIVEN));
 	if (!user.passGiven())
 		// return("Please provide the password first: PASS <password>");
-		return(buildNotice("Please provide the password first: PASS <password>", "NOTICE", 0));
+		return(buildNotice("Please provide the password first: PASS <password>", 0));
 		
 	//TODO check if nick characters are all allowed
 	if (_nicks.find(params[0]) != _nicks.end())
 		// return("Error: Nickname is already in use");
-		return(buildNotice("Nickname is already in use!", "NOTICE", ERR_NICKNAMEINUSE));
+		return(buildNotice("Nickname is already in use!", ERR_NICKNAMEINUSE));
 	else
 	{
 		user.setNick(params[0]);
 		_nicks[params[0]] = user.getFd();
 	}
 	if (oldnick != "")
-		return(buildNotice("Your nick has been changed", "NOTICE", 0));
+		return(buildNotice("Your nick has been changed", 0));
 		// return("Your nick has been changed");
 	else
 		// return("Now for the last step, add username: USER <username> <hostname> <servername> <realname>");
-		return(buildNotice("Now for the last step, add username: USER <username> 0 * <:realname>", "NOTICE", 0));
+		return(buildNotice("Now for the last step, add username: USER <username> 0 * <:realname>", 0));
 }
 
 std::string IrcServ::fUser(std::vector<std::string> params, User &user)
 {
 	if (user.isRegistered())
-		return(buildNotice("You may not reregister", "NOTICE", ERR_ALREADYREGISTRED));
+		return(buildNotice("You may not reregister", ERR_ALREADYREGISTRED));
 	if (!user.passGiven())
-		return(buildNotice("Please provide the password first: PASS <password>", "NOTICE", 0));
+		return(buildNotice("Please provide the password first: PASS <password>", 0));
 	else if (user.getNick() == "")
-		return(buildNotice("Please provide your nick first: NICK <nick>.", "NOTICE", 0));
+		return(buildNotice("Please provide your nick first: NICK <nick>.", 0));
 	//TODO add more parameters
 	user.setUser(params[0]);
 	user.registerUser();
@@ -386,6 +444,20 @@ std::string IrcServ::fUser(std::vector<std::string> params, User &user)
 		// return(":irc.server.com 001");
 		// return(":nick!user@127.0.0.1 PRIVMSG nick :msg");
 		// :nick!user@127.0.0.1 PRIVMSG nick :msg
+}
+
+std::string IrcServ::fPing(std::vector<std::string> params, User &user)
+{
+	return("PONG irc.server.com");
+}
+
+//sets quitted flag and closes user socket afer getting a QUIT message
+//the user is deleted from the server list in delete_user function
+std::string IrcServ::fQuit(std::vector<std::string> params, User &user)
+{
+	user.quitted();
+	close(user.getFd());
+	return("");
 }
 
 /* ******Helper functions****** */

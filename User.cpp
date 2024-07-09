@@ -4,7 +4,7 @@
 // User::User(){}
 
 
-User::User(int fd) : _fd(fd), _isregistered(false), _passgiven(false), _host("127.0.0.1"){};
+User::User(int fd) : _fd(fd), _isregistered(false), _passgiven(false), _host("127.0.0.1"), _quitted(false){};
 
 //Assignment operator:
 User &User::operator=(User const &original)
@@ -152,6 +152,16 @@ void User::setNick(std::string nick)
 void User::givePass()
 {
 	_passgiven = true;
+}
+
+void User::quitted()
+{
+	_quitted = true;
+}
+
+bool User::hasquitted()
+{
+	return(_quitted);
 }
 
 /*DESTRUCTOR*/

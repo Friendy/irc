@@ -20,6 +20,7 @@ private:
 	bool _isregistered;
 	bool _passgiven;
 	struct sockaddr_in _address;
+	bool _quitted;
 
 public:
 	const std::string getUser();
@@ -37,6 +38,8 @@ public:
 	bool isRegistered();
 	bool passGiven();
 	void givePass();
+	void quitted();
+	bool hasquitted();
 	// Command parseMsg();
 
 	// User();
