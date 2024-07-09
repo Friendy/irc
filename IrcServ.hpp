@@ -40,10 +40,7 @@ private:
 	std::map<const std::string, std::string (IrcServ::*)(std::vector<std::string> params, User &user)> _commands;
 	std::map<const std::string, int> _nicks;
 	std::map<const int, std::string> _codes;
-	std::map<const std::string, int> _nicks;
-	std::map<const int, std::string> _codes;
 	int _listenfd;
-	const std::string _server_name;
 	const std::string _server_name;
 	std::string _pass;
 	pollfd	_userPoll[SOMAXCONN];

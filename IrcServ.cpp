@@ -217,20 +217,6 @@ void IrcServ::send_msg(std::string msg)
 		send_msg(it->second->getFd(), msg);
 }
 
-std::string IrcServ::buildNotice(const std::string msg, std::string type, int code)
-{
-	std::stringstream ss;
-	std::string new_msg;
-
-	ss << ":" << _server_name;
-	ss << " " << type;
-	if (code != 0)
-		ss << " " << code  << " " << _codes[code];
-	if (msg != "")
-		ss << " :" << msg;
-	std::getline(ss, new_msg);
-	return (new_msg);
-}
 
 std::string IrcServ::buildMsg(const std::string msg, User to, int code)
 {
@@ -246,18 +232,6 @@ std::string IrcServ::buildMsg(const std::string msg, User to, int code)
 	return (new_msg);
 // :irc.server.com NOTICE 462 ERR_ALREADYREGISTRED
 // :nick!user@127.0.0.1 PRIVMSG nick :msg
-}
-
-std::string IrcServ::welcome(User user)
-{
-	std::stringstream ss;
-	std::string new_msg;
-
-	ss << ":" << _server_name << " 001 " << user.getNick();
-	ss << " :" << "Welcome to the Internet Relay Network " << user.getFullName();
-	std::cout << "TEST" << std::endl;
-	std::getline(ss, new_msg);
-	return (new_msg);
 }
 
 std::string IrcServ::buildNotice(const std::string msg, int code)
@@ -274,21 +248,21 @@ std::string IrcServ::buildNotice(const std::string msg, int code)
 	return (new_msg);
 }
 
-std::string IrcServ::buildMsg(const std::string msg, User to, int code)
-{
-	std::stringstream ss;
-	std::string new_msg;
+// std::string IrcServ::buildMsg(const std::string msg, User to, int code)
+// {
+// 	std::stringstream ss;
+// 	std::string new_msg;
 
-	ss << " PRIVMSG " << to.getNick();
-	if (code != 0)
-		ss << " " << code  << " " << _codes[code];
-	if (msg != "")
-		ss << " :" << msg;
-	std::getline(ss, new_msg);
-	return (new_msg);
-// :irc.server.com NOTICE 462 ERR_ALREADYREGISTRED
-// :nick!user@127.0.0.1 PRIVMSG nick :msg
-}
+// 	ss << " PRIVMSG " << to.getNick();
+// 	if (code != 0)
+// 		ss << " " << code  << " " << _codes[code];
+// 	if (msg != "")
+// 		ss << " :" << msg;
+// 	std::getline(ss, new_msg);
+// 	return (new_msg);
+// // :irc.server.com NOTICE 462 ERR_ALREADYREGISTRED
+// // :nick!user@127.0.0.1 PRIVMSG nick :msg
+// }
 
 std::string IrcServ::welcome(User user)
 {

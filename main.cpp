@@ -37,14 +37,6 @@ int main(int argc, char *argv[])
 		Err::handler(1, "wrong number of arguments: ", "please, use port and password");
 	IrcServ serv(argv[2]);
 	serv.server_start("tcp", argv[1], "localhost");
-	while (1)
-	{
-		serv.accept_client();
-		serv.recieve_msg();
-		// serv.test();
-		// serv.print_users();
-		sleep(1);
-	}
 	// while (1)
 	// {
 	// 	//pollReturn = poll(_userPoll, _activePoll, 5000);

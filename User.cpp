@@ -23,7 +23,8 @@ User::User(User const &original) : _fd(original._fd)
 	*this = original;
 }
 
-User::User(int fd, const std::string &hostmask) : _fd(fd), _hostmask(hostmask) {
+
+User::User(int fd, const std::string &hostmask) : _fd(fd), _hostmask(hostmask), _isregistered(false), _passgiven(false), _host("127.0.0.1"), _quitted(false){
     std::cout << "User created with fd: " << fd << " and hostmask: " << hostmask << std::endl;
     memset(&_address, 0, sizeof(_address));
 }
