@@ -21,17 +21,20 @@ private:
 	bool _passgiven;
 	struct sockaddr_in _address;
 	bool _quitted;
+	int _pollInd; //index of user fd in poll array
 
 public:
 	const std::string getUser();
 	const std::string getLastMsg();
 	void setUser(std::string user);
 	void setAddress(struct sockaddr_in addr);
+	void setPollInd(int i);
 	const std::string getNick();
 	const std::string getHost();
 	const std::string getFullName();
 	void setNick(std::string nick);
 	int getFd();
+	int getPollInd();
 	// const std::string getMsg(std::string msg);
 	void setLastMsg(std::string msg);
 	void registerUser();

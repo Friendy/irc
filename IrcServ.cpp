@@ -13,6 +13,7 @@ IrcServ::IrcServ(std::string pass) : _server_name("irc.server.com")
 	_commands["NICK"] = &IrcServ::fNick;
 	_commands["PING"] = &IrcServ::fPing;
 	_commands["QUIT"] = &IrcServ::fQuit;
+	_commands["PRIVMSG"] = &IrcServ::fPriv;
 	_codes[RPL_WELCOME] = "RPL_WELCOME";
 	_codes[ERR_UNKNOWNCOMMAND] = "ERR_UNKNOWNCOMMAND";
 	_codes[ERR_ALREADYREGISTRED] = "ERR_ALREADYREGISTRED";
@@ -43,7 +44,7 @@ void IrcServ::addToPoll(int fd) {
 	if (_activePoll >= SOMAXCONN)
 		Err::handler(1, "too many connections", "");
 	_userPoll[_activePoll].fd = fd;
-	_userPoll[_activePoll].events = POLLIN;
+	_userPoll[_activePoll].events = POLLIN | POLLOUT;//mrubina: added POLLOUT for sending
 	_activePoll++;
 }
 
@@ -53,7 +54,7 @@ void IrcServ::accept_client() {
     struct sockaddr_in dest_addr;
     socklen_t dest_len = sizeof(dest_addr);
     char host[INET_ADDRSTRLEN];
-
+	
     fd = accept(_listenfd, (struct sockaddr *)&dest_addr, &dest_len);
     if (fd == -1) {
         if (errno != EAGAIN && errno != EWOULDBLOCK) {
@@ -61,7 +62,6 @@ void IrcServ::accept_client() {
         }
         return;
     }
-
     inet_ntop(AF_INET, &dest_addr.sin_addr, host, INET_ADDRSTRLEN);
     std::string hostmask(host);
     std::cout << "User hostmask: " << hostmask << std::endl;
@@ -71,6 +71,7 @@ void IrcServ::accept_client() {
     _users[fd]->setAddress(dest_addr);
 
     addToPoll(fd);
+	_users[fd]->setPollInd(_activePoll - 1);//mrubina: added index to user for easy access
 
     send_msg(fd, "Hello\r\n");//will be removed after polling
 	// send_msg(fd, "001 RPL_WELCOME \n");
@@ -218,20 +219,19 @@ void IrcServ::send_msg(std::string msg)
 }
 
 
-std::string IrcServ::buildMsg(const std::string msg, User to, int code)
+std::string IrcServ::buildPriv(const std::string msg, User to)
 {
 	std::stringstream ss;
 	std::string new_msg;
 
 	ss << " PRIVMSG " << to.getNick();
-	if (code != 0)
-		ss << " " << code  << " " << _codes[code];
 	if (msg != "")
 		ss << " :" << msg;
 	std::getline(ss, new_msg);
 	return (new_msg);
 // :irc.server.com NOTICE 462 ERR_ALREADYREGISTRED
 // :nick!user@127.0.0.1 PRIVMSG nick :msg
+
 }
 
 std::string IrcServ::buildNotice(const std::string msg, int code)
@@ -248,7 +248,7 @@ std::string IrcServ::buildNotice(const std::string msg, int code)
 	return (new_msg);
 }
 
-// std::string IrcServ::buildMsg(const std::string msg, User to, int code)
+// std::string IrcServ::buildPriv(const std::string msg, User to, int code)
 // {
 // 	std::stringstream ss;
 // 	std::string new_msg;
@@ -280,9 +280,17 @@ std::string IrcServ::welcome(User user)
 Command IrcServ::parseMsg(const std::string msg)
 {
 	size_t start;
+	std::string pref;
 
 	start = msg.find_first_not_of(' '); //ignore starting spaces
+	if (msg[start] == ':')
+	{
+		start++;
+		pref = get_next_word(msg, start);
+	}
 	Command com(get_next_word(msg, start));
+	if (com.getCommand() == "PRIVMSG")
+		com.setParam(pref);
 	/* 	//TODO add parsing for join, PRIVMSG
 	PRIVMSG #channel :msg
 	:nick!user@127.0.0.1 PRIVMSG #channel :msg
@@ -294,7 +302,7 @@ Command IrcServ::parseMsg(const std::string msg)
 		start = msg.find(' ', start); //finding first space after previous word
 		if (start != std::string::npos)
 		{
-			start = msg.find_first_not_of(' ', start);//finding start of the current word
+			start++;
 			com.setParam(get_next_word(msg, start));
 		}
 	}
@@ -310,22 +318,30 @@ void IrcServ::recieve_msg()
 	char buf[512];
 	bzero(buf, 512);
 	std::string msg;
-	std::string response;
+	Message response;
 
 	std::map<const int, User *>::iterator it;
 	for (it = _users.begin(); it != _users.end(); ++it)
 	{
-		recv(it->second->getFd(), buf, 512, 0);
-		msg = std::string(buf);
-		response = processMsg(*it->second, msg);
-		if (response != "")
-			send_msg(it->second->getFd(), addNewLine(response));
-		// std::cout << "msg: " << buf << "\n";
-		bzero(buf, 512);
-		if (it->second->hasquitted())
-			delete_user(it);
-		if (it ==_users.end()) //this can happen if the last user is deleted
-			break;
+		if ( _userPoll[it->second->getPollInd()].revents & POLLIN)//if pollling showed ready for recieving
+		{
+			recv(it->second->getFd(), buf, 512, 0);
+			msg = std::string(buf);
+			// std::cout << "msg: " << msg << "\n";
+			// if (msg.find("PRIVMSG") != std::string::npos)
+			// 	send_msg(it->second->getFd(), msg);
+			response = processMsg(*it->second, msg);
+			// std::cout << "msg l: " << response.getMsg().length() << "\n";
+			if (response.getMsg() != "" && _userPoll[it->second->getPollInd()].revents & POLLOUT)//ready to send
+				response.sendMsg(it->second->getFd());
+				// send_msg(it->second->getFd(), addNewLine(response));
+			// std::cout << "msg: " << buf << "\n";
+			bzero(buf, 512);
+			if (it->second->hasquitted())
+				delete_user(it);
+			if (it ==_users.end()) //this can happen if the last user is deleted
+				break;
+		}
 	}
 }
 
@@ -333,9 +349,9 @@ void IrcServ::recieve_msg()
 trims message, saves it for the user, executes command using an appropriate function
 CAP command ignored because
 */
-std::string IrcServ::processMsg(User &user, std::string msg)
+Message IrcServ::processMsg(User &user, std::string msg)
 {
-	std::string response;
+	Message response("");
 	Command com;
 
 	trimMsg(msg);
@@ -343,19 +359,22 @@ std::string IrcServ::processMsg(User &user, std::string msg)
 	if (msg != "")
 	{
 		com = parseMsg(msg);
+		// std::cout << "com: " << com.getCommand() << "\n";
 		if (com.getCommand() == "CAP")
-			return("");
+			return(response);
 		std::cout << "Recieved: " << msg << "\n";
 		if (com.getCommand() == "NOTICE")
-			return("");
+			return(response);
+		// if (com.getCommand() == "PRIVMSG")
+		// 	response.addFd(_nicks[com.getParam(0)]);
 		if (_commands.find(com.getCommand()) != _commands.end())
-			response = (this->*_commands[com.getCommand()])(com.getParams(), user);
+			response.setMsg((this->*_commands[com.getCommand()])(com.getParams(), user));
 		else
-			response = "421 ERR_UNKNOWNCOMMAND\n";
+			response.setMsg("421 ERR_UNKNOWNCOMMAND\n");
 		return(response);
 	}
 	else
-		return("");
+		return(response);
 }
 
 /* ******Command functions****** */
@@ -425,6 +444,11 @@ std::string IrcServ::fPing(std::vector<std::string> params, User &user)
 	return("PONG irc.server.com");
 }
 
+std::string IrcServ::fPriv(std::vector<std::string> params, User &user)
+{
+	return(buildPriv(params[2], user));
+}
+
 //sets quitted flag and closes user socket afer getting a QUIT message
 //the user is deleted from the server list in delete_user function
 std::string IrcServ::fQuit(std::vector<std::string> params, User &user)
@@ -463,15 +487,25 @@ void IrcServ::print_users()
 	std::cout << "end\n";
 }
 
-std::string IrcServ::get_next_word(std::string str, size_t start)
+std::string IrcServ::get_next_word(std::string str, size_t &start)
 {
 	size_t end;
+	std::string sub;
 
+	if (str[start] == ' ')
+		start = str.find_first_not_of(' ', start);//finding start of the current word
 	end = str.find(' ', start);
-	if (end != std::string::npos)
-		return (str.substr(start, end - start));
+	if (end == std::string::npos || str[start] == ':')
+	{
+		sub = str.substr(start, str.length() - start);
+		start = std::string::npos;
+	}
 	else
-		return (str.substr(start, str.length() - start));
+	{
+		sub = str.substr(start, end - start);
+		start = end;
+	}
+	return (sub);
 }
 
 void IrcServ::trimMsg(std::string &msg)

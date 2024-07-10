@@ -53,7 +53,7 @@ const std::string User::getNick()
 
 const std::string User::getHost()
 {
-	return(this->_host);
+	return(this->_hostmask);
 }
 
 const std::string User::getFullName()
@@ -70,6 +70,16 @@ const std::string User::getFullName()
 int User::getFd()
 {
 	return(this->_fd);
+}
+
+int User::getPollInd()
+{
+	return(this->_pollInd);
+}
+
+void User::setPollInd(int i)
+{
+	_pollInd = i;
 }
 
 const std::string User::getLastMsg()

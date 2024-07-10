@@ -27,7 +27,9 @@
 #include <cerrno>
 #include <poll.h>
 #include <sstream>
+#include <queue>
 #include "defines.hpp"
+#include "Message.hpp"
 
 class IrcServ {
 
@@ -40,6 +42,7 @@ private:
 	std::map<const std::string, std::string (IrcServ::*)(std::vector<std::string> params, User &user)> _commands;
 	std::map<const std::string, int> _nicks;
 	std::map<const int, std::string> _codes;
+	std::queue<Message> _msgs;
 	int _listenfd;
 	const std::string _server_name;
 	std::string _pass;
@@ -87,12 +90,13 @@ What needs to be done
 	/* ******Message sending functions ********** */
 	void send_msg(int fd, std::string msg);
 	void send_msg(std::string msg);
-	std::string buildMsg(const std::string msg, User to, int code);
+	std::string buildPriv(const std::string msg, User to);
 	std::string welcome(User user);
 	std::string buildNotice(const std::string msg, int code);
 
 	/* ******General message processing functions********** */
-	std::string processMsg(User &user, std::string msg);
+	// std::string processMsg(User &user, std::string msg);
+	Message processMsg(User &user, std::string msg);
 	Command parseMsg(const std::string msg);
 	void delete_user(std::map<const int, User *>::iterator &it);
 
@@ -102,12 +106,13 @@ What needs to be done
 	std::string fNick(std::vector<std::string> params, User &user);
 	std::string fPing(std::vector<std::string> params, User &user);
 	std::string fQuit(std::vector<std::string> params, User &user);
+	std::string fPriv(std::vector<std::string> params, User &user);
 
 	/* ******Helper functions****** */
 	void create_hint(struct addrinfo *hint);
 	std::string addNewLine(std::string &str);
 	void trimMsg(std::string &msg);
-	std::string get_next_word(std::string str, size_t start);
+	std::string get_next_word(std::string str, size_t &start);
 
 public:
 	void recieve_msg();

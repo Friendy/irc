@@ -36,6 +36,7 @@ void Err::handler(int exit_stat, std::string msg, std::string val)
 	std::cout << msg << val << "\n";
 	if (errno != 0)
 		std::cout << strerror(errno) << " " << errno << "\n";
+	if (exit_stat != 0)
 	_exit(exit_stat);
 }
 
