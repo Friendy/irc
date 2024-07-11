@@ -18,6 +18,7 @@ public:
 	// std::vector<int> getFds();
 	void addFd(int fd);
 	void sendMsg(int fd);
+	void sendMsg();
 	void addNewLine();
 	// void sendToAll();
 

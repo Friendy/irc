@@ -46,12 +46,21 @@ void Message::addFd(int fd)
 //sending a message to one fd
 void Message::sendMsg(int fd)
 {
+	// std::cout << "fd " << _msg << "\n";
 	addNewLine();
 	ssize_t bytes_sent = send(fd, _msg.data(), _msg.length(), 0);
 	if (bytes_sent == -1)
 		Err::handler(0, "sending message failed: ", _msg);
 	else
-		std::cout << "Sent: " << _msg << "\n";
+		std::cout << "Sent to " << fd << ": " << _msg << "\n";
+}
+
+void Message::sendMsg()
+{
+	if (!_fds.empty())
+	{
+		sendMsg(_fds[0]);
+	}
 }
 
 void Message::addNewLine()

@@ -219,14 +219,14 @@ void IrcServ::send_msg(std::string msg)
 }
 
 
-std::string IrcServ::buildPriv(const std::string msg, User to)
+std::string IrcServ::buildPriv(const std::string msg, std::string from, std::string to)
 {
 	std::stringstream ss;
 	std::string new_msg;
 
-	ss << " PRIVMSG " << to.getNick();
+	ss << ":" << from << " PRIVMSG " << to;
 	if (msg != "")
-		ss << " :" << msg;
+		ss << " " << msg;
 	std::getline(ss, new_msg);
 	return (new_msg);
 // :irc.server.com NOTICE 462 ERR_ALREADYREGISTRED
@@ -247,22 +247,6 @@ std::string IrcServ::buildNotice(const std::string msg, int code)
 	std::getline(ss, new_msg);
 	return (new_msg);
 }
-
-// std::string IrcServ::buildPriv(const std::string msg, User to, int code)
-// {
-// 	std::stringstream ss;
-// 	std::string new_msg;
-
-// 	ss << " PRIVMSG " << to.getNick();
-// 	if (code != 0)
-// 		ss << " " << code  << " " << _codes[code];
-// 	if (msg != "")
-// 		ss << " :" << msg;
-// 	std::getline(ss, new_msg);
-// 	return (new_msg);
-// // :irc.server.com NOTICE 462 ERR_ALREADYREGISTRED
-// // :nick!user@127.0.0.1 PRIVMSG nick :msg
-// }
 
 std::string IrcServ::welcome(User user)
 {
@@ -327,15 +311,11 @@ void IrcServ::recieve_msg()
 		{
 			recv(it->second->getFd(), buf, 512, 0);
 			msg = std::string(buf);
-			// std::cout << "msg: " << msg << "\n";
-			// if (msg.find("PRIVMSG") != std::string::npos)
-			// 	send_msg(it->second->getFd(), msg);
 			response = processMsg(*it->second, msg);
-			// std::cout << "msg l: " << response.getMsg().length() << "\n";
 			if (response.getMsg() != "" && _userPoll[it->second->getPollInd()].revents & POLLOUT)//ready to send
-				response.sendMsg(it->second->getFd());
-				// send_msg(it->second->getFd(), addNewLine(response));
-			// std::cout << "msg: " << buf << "\n";
+				{
+					response.sendMsg();
+				}
 			bzero(buf, 512);
 			if (it->second->hasquitted())
 				delete_user(it);
@@ -362,11 +342,15 @@ Message IrcServ::processMsg(User &user, std::string msg)
 		// std::cout << "com: " << com.getCommand() << "\n";
 		if (com.getCommand() == "CAP")
 			return(response);
-		std::cout << "Recieved: " << msg << "\n";
+		std::cout << "Recieved from " << user.getFd() << ": " << msg << "\n";
 		if (com.getCommand() == "NOTICE")
 			return(response);
-		// if (com.getCommand() == "PRIVMSG")
-		// 	response.addFd(_nicks[com.getParam(0)]);
+		//adding send fds to response
+		//TODO handle multiple fds
+		if (com.getCommand() == "PRIVMSG")
+			response.addFd(_nicks[com.getParam(1)]);//we get fd based on nick
+		else
+			response.addFd(user.getFd());
 		if (_commands.find(com.getCommand()) != _commands.end())
 			response.setMsg((this->*_commands[com.getCommand()])(com.getParams(), user));
 		else
@@ -446,7 +430,10 @@ std::string IrcServ::fPing(std::vector<std::string> params, User &user)
 
 std::string IrcServ::fPriv(std::vector<std::string> params, User &user)
 {
-	return(buildPriv(params[2], user));
+	std::string from;
+	if (params[0] == "")
+		return(buildPriv(params[2], user.getFullName(), params[1]));
+	return(buildPriv(params[2], params[0], params[1]));
 }
 
 //sets quitted flag and closes user socket afer getting a QUIT message

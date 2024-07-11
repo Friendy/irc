@@ -90,7 +90,7 @@ What needs to be done
 	/* ******Message sending functions ********** */
 	void send_msg(int fd, std::string msg);
 	void send_msg(std::string msg);
-	std::string buildPriv(const std::string msg, User to);
+	std::string buildPriv(const std::string msg, std::string from, std::string to);
 	std::string welcome(User user);
 	std::string buildNotice(const std::string msg, int code);
 

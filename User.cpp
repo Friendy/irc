@@ -14,6 +14,7 @@ User &User::operator=(User const &original)
 		this->_user = original._user;
 		this->_nick = original._nick;
 		this->_host = original._host;
+		this->_hostmask = original._hostmask;
 	}
 	return(*this);
 }
