@@ -5,26 +5,31 @@
 # include <vector>
 # include "User.hpp"
 # include "Err.hpp"
+#include <poll.h>
 
 class Message {
 
 private:
 	std::string _msg;
-	std::vector<int> _fds;
+	std::vector<pollfd *> _fds;
+	bool _repushed;
 
 public:
 	const std::string getMsg();
 	void setMsg(std::string msg);
 	// std::vector<int> getFds();
-	void addFd(int fd);
-	void sendMsg(int fd);
+	// void addFd(int fd);
+	void addFd(pollfd *fd);
+	int sendMsg(int fd);
 	void sendMsg();
 	void addNewLine();
-	// void sendToAll();
+	bool sendIncomplete();
+	void setrepushed(bool repushed);
+	bool isrepushed();
 
 	Message();
 	Message(std::string msg);
-	Message(std::string msg, int fd);
+	Message(std::string msg, pollfd *fd);
 	Message(Message const &original);
 	Message &operator=(Message const &original);
 	~Message();

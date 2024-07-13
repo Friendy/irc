@@ -6,6 +6,7 @@
 #include "Command.hpp"
 #include <cstring>
 #include <netinet/in.h>
+#include <poll.h>
 
 class User {
 
@@ -22,6 +23,7 @@ private:
 	struct sockaddr_in _address;
 	bool _quitted;
 	int _pollInd; //index of user fd in poll array
+	pollfd *_fdPtr;//pointer to pollfd structure
 
 public:
 	const std::string getUser();
@@ -29,6 +31,7 @@ public:
 	void setUser(std::string user);
 	void setAddress(struct sockaddr_in addr);
 	void setPollInd(int i);
+	void setPollPtr(pollfd *pfd);
 	const std::string getNick();
 	const std::string getHost();
 	const std::string getFullName();

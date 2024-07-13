@@ -83,6 +83,11 @@ void User::setPollInd(int i)
 	_pollInd = i;
 }
 
+void User::setPollPtr(pollfd *pfd)
+{
+	_fdPtr = pfd;
+}
+
 const std::string User::getLastMsg()
 {
 	return(this->_last_msg);

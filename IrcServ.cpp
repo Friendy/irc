@@ -14,6 +14,7 @@ IrcServ::IrcServ(std::string pass) : _server_name("irc.server.com")
 	_commands["PING"] = &IrcServ::fPing;
 	_commands["QUIT"] = &IrcServ::fQuit;
 	_commands["PRIVMSG"] = &IrcServ::fPriv;
+	_commands["UNKNOWN"] = &IrcServ::fUnknown;
 	_codes[RPL_WELCOME] = "RPL_WELCOME";
 	_codes[ERR_UNKNOWNCOMMAND] = "ERR_UNKNOWNCOMMAND";
 	_codes[ERR_ALREADYREGISTRED] = "ERR_ALREADYREGISTRED";
@@ -28,7 +29,12 @@ IrcServ &IrcServ::operator=(IrcServ const &original)
 	{
 		this->_pass = original._pass;
 		this->_commands = original._commands;
-		this-> _listenfd = original._listenfd;
+		this->_listenfd = original._listenfd;
+		this->_codes = original._codes;
+		this->_users = original._users;
+		this->_nicks = original._nicks;
+		this->_msgQ = original._msgQ;
+		this->_activePoll = original._activePoll;
 	}
 	return(*this);
 }
@@ -72,8 +78,15 @@ void IrcServ::accept_client() {
 
     addToPoll(fd);
 	_users[fd]->setPollInd(_activePoll - 1);//mrubina: added index to user for easy access
+	_users[fd]->setPollPtr(&_userPoll[_activePoll - 1]);//mrubina: added pointer to pollfd strcture for easy access
 
-    send_msg(fd, "Hello\r\n");//will be removed after polling
+    // send_msg(fd, "Please provide the password: PASS <password>\n");//will be removed after polling
+	// buildNotice("Please provide the password: PASS <password>", 0);
+	Message response(buildNotice("Please provide the password: PASS <password>", 0), &_userPoll[_activePoll - 1]);
+	// std::cout << "rep" << response.isrepushed() << "\n";
+	response.setrepushed(true);
+	// std::cout << "rep" << response.isrepushed() << "\n";
+	_msgQ.push(response);
 	// send_msg(fd, "001 RPL_WELCOME \n");
 
     std::cout << "Client connected" << std::endl;
@@ -184,6 +197,9 @@ to get protocol number that will be used later
 			Err::handler(1, "poll error", "");
 		accept_client();
 		recieve_msg();
+		sendQueue();
+		// std::cout << "broken " << _msgQ.size() << "\n";
+		// sleep(2);
 	}
 
 }
@@ -312,16 +328,34 @@ void IrcServ::recieve_msg()
 			recv(it->second->getFd(), buf, 512, 0);
 			msg = std::string(buf);
 			response = processMsg(*it->second, msg);
-			if (response.getMsg() != "" && _userPoll[it->second->getPollInd()].revents & POLLOUT)//ready to send
-				{
-					response.sendMsg();
-				}
+			if (response.getMsg() != "")
+				_msgQ.push(response);
+			// if (response.getMsg() != "")
+			// 	response.sendMsg();
 			bzero(buf, 512);
 			if (it->second->hasquitted())
 				delete_user(it);
 			if (it ==_users.end()) //this can happen if the last user is deleted
 				break;
 		}
+	}
+}
+
+void IrcServ::sendQueue()
+{
+	Message *response;
+	while (!_msgQ.empty())
+	{
+		response = &_msgQ.front();
+		if (response->isrepushed())
+		{
+			response->setrepushed(false);
+			break;
+		}
+		response->sendMsg();//checking polling results is inside this function
+		_msgQ.pop();// message is deleted from the queue
+		if (response->sendIncomplete())//if sending failed for some fds the message is pushed to the queue again
+			_msgQ.push(*response);
 	}
 }
 
@@ -339,26 +373,22 @@ Message IrcServ::processMsg(User &user, std::string msg)
 	if (msg != "")
 	{
 		com = parseMsg(msg);
-		// std::cout << "com: " << com.getCommand() << "\n";
-		if (com.getCommand() == "CAP")
+		if (com.getCommand() == "CAP")//ignoring completely
 			return(response);
 		std::cout << "Recieved from " << user.getFd() << ": " << msg << "\n";
-		if (com.getCommand() == "NOTICE")
+		if (com.getCommand() == "NOTICE")//only printing
 			return(response);
 		//adding send fds to response
 		//TODO handle multiple fds
 		if (com.getCommand() == "PRIVMSG")
-			response.addFd(_nicks[com.getParam(1)]);//we get fd based on nick
+			response.addFd(getPollfd(com.getParam(1)));//we get fd based on nick
 		else
-			response.addFd(user.getFd());
-		if (_commands.find(com.getCommand()) != _commands.end())
-			response.setMsg((this->*_commands[com.getCommand()])(com.getParams(), user));
-		else
-			response.setMsg("421 ERR_UNKNOWNCOMMAND\n");
-		return(response);
+			response.addFd(&_userPoll[user.getPollInd()]);
+		if (_commands.find(com.getCommand()) == _commands.end())
+			com.replaceCommand("UNKNOWN");
+		response.setMsg((this->*_commands[com.getCommand()])(com.getParams(), user));
 	}
-	else
-		return(response);
+	return(response);
 }
 
 /* ******Command functions****** */
@@ -385,9 +415,7 @@ std::string IrcServ::fNick(std::vector<std::string> params, User &user)
 	if (params.empty())
 		return(buildNotice("", ERR_NONICKNAMEGIVEN));
 	if (!user.passGiven())
-		// return("Please provide the password first: PASS <password>");
 		return(buildNotice("Please provide the password first: PASS <password>", 0));
-		
 	//TODO check if nick characters are all allowed
 	if (_nicks.find(params[0]) != _nicks.end())
 		// return("Error: Nickname is already in use");
@@ -399,9 +427,7 @@ std::string IrcServ::fNick(std::vector<std::string> params, User &user)
 	}
 	if (oldnick != "")
 		return(buildNotice("Your nick has been changed", 0));
-		// return("Your nick has been changed");
 	else
-		// return("Now for the last step, add username: USER <username> <hostname> <servername> <realname>");
 		return(buildNotice("Now for the last step, add username: USER <username> 0 * <:realname>", 0));
 }
 
@@ -418,9 +444,6 @@ std::string IrcServ::fUser(std::vector<std::string> params, User &user)
 	user.registerUser();
 	// return("irc.server.com NOTICE 001 RPL_WELCOME");
 		return(welcome(user));
-		// return(":irc.server.com 001");
-		// return(":nick!user@127.0.0.1 PRIVMSG nick :msg");
-		// :nick!user@127.0.0.1 PRIVMSG nick :msg
 }
 
 std::string IrcServ::fPing(std::vector<std::string> params, User &user)
@@ -428,12 +451,28 @@ std::string IrcServ::fPing(std::vector<std::string> params, User &user)
 	return("PONG irc.server.com");
 }
 
+/*
+:nick!user@127.0.0.1 PRIVMSG nick :msg
+or
+PRIVMSG nick :msg
+params[0] - full name of the sender
+params[1] - nick of the receiver
+params[2] - msg
+//TODO handling the case of incorrect message
+ */
 std::string IrcServ::fPriv(std::vector<std::string> params, User &user)
 {
 	std::string from;
 	if (params[0] == "")
 		return(buildPriv(params[2], user.getFullName(), params[1]));
 	return(buildPriv(params[2], params[0], params[1]));
+}
+
+std::string IrcServ::fUnknown(std::vector<std::string> params, User &user)
+{
+	std::string str("421 ERR_UNKNOWNCOMMAND ");
+	str.append(params[0]);
+	return(str);
 }
 
 //sets quitted flag and closes user socket afer getting a QUIT message
@@ -503,10 +542,12 @@ void IrcServ::trimMsg(std::string &msg)
 		msg.erase(msg.length() - 1);
 }
 
-std::string IrcServ::addNewLine(std::string &str)
+//we have a nick of a user and we have to get its pollfd
+pollfd *IrcServ::getPollfd(std::string nick)
 {
-	str.insert(str.end(), '\n');
-	return(str);
+	User *user;
+	user = _users[_nicks[nick]];
+	return(&_userPoll[user->getPollInd()]);
 }
 
 

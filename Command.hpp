@@ -11,10 +11,11 @@ private:
 	std::vector<std::string> _parameters;
 
 public:
-	const std::string getCommand();
+	std::string getCommand();
 	const std::string getParam(int n);
 	std::vector<std::string> getParams();
 	void setParam(std::string param);
+	void replaceCommand(std::string com);
 	size_t paramCount();
 	// void setName(std::string name);
 	// const std::vector<User> getUsers();

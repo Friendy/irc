@@ -31,9 +31,18 @@ Command::Command(Command const &original)
 }
 
 /*FUNCTIONS*/
-const std::string Command::getCommand()
+std::string Command::getCommand()
 {
 	return(this->_command);
+}
+
+void Command::replaceCommand(std::string com)
+{
+	if (!_parameters.empty())
+		_parameters[0] = _command;
+	else
+		setParam(_command);
+	_command = com;
 }
 
 const std::string Command::getParam(int n)
