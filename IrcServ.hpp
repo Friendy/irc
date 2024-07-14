@@ -48,6 +48,9 @@ private:
 	std::string _pass;
 	pollfd	_userPoll[SOMAXCONN];
 	nfds_t 	_activePoll;
+	int _cycle;
+	std::queue<User*> _recvQ;
+	std::queue<int> _actionQ;
 
 	//TODO: implement send queue
 	//TODO: update introductory message: should contain:
@@ -88,8 +91,8 @@ What needs to be done
 	void setupSocket(const char* protname, long port_tmp, struct addrinfo *addr_info);
 
 	/* ******Message sending functions ********** */
-	void send_msg(int fd, std::string msg);
-	void send_msg(std::string msg);
+	// void send_msg(int fd, std::string msg);
+	// void send_msg(std::string msg);
 	void sendQueue();
 	std::string buildPriv(const std::string msg, std::string from, std::string to);
 	std::string welcome(User user);
@@ -99,7 +102,8 @@ What needs to be done
 	// std::string processMsg(User &user, std::string msg);
 	Message processMsg(User &user, std::string msg);
 	Command parseMsg(const std::string msg);
-	void delete_user(std::map<const int, User *>::iterator &it);
+	// void delete_user(std::map<const int, User *>::iterator &it);
+	void delete_user(User *user);
 
 	/* ******Command functions****** */
 	std::string fPass(std::vector<std::string> params, User &user);
@@ -115,6 +119,10 @@ What needs to be done
 	void trimMsg(std::string &msg);
 	std::string get_next_word(std::string str, size_t &start);
 	pollfd *getPollfd(std::string nick);
+	pollfd *getFirstRecv();
+	pollfd *getFirstSend();
+	int getAction();
+	bool readyToAction(int action);
 
 public:
 	void recieve_msg();

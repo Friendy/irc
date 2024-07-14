@@ -4,7 +4,7 @@
 // User::User(){}
 
 
-User::User(int fd) : _fd(fd), _isregistered(false), _passgiven(false), _host("127.0.0.1"), _quitted(false){};
+User::User(int fd) : _fd(fd), _isregistered(false), _passgiven(false), _quitted(false){};
 
 //Assignment operator:
 User &User::operator=(User const &original)
@@ -13,7 +13,6 @@ User &User::operator=(User const &original)
 	{
 		this->_user = original._user;
 		this->_nick = original._nick;
-		this->_host = original._host;
 		this->_hostmask = original._hostmask;
 	}
 	return(*this);
@@ -25,7 +24,7 @@ User::User(User const &original) : _fd(original._fd)
 }
 
 
-User::User(int fd, const std::string &hostmask) : _fd(fd), _hostmask(hostmask), _isregistered(false), _passgiven(false), _host("127.0.0.1"), _quitted(false){
+User::User(int fd, const std::string &hostmask) : _fd(fd), _hostmask(hostmask), _isregistered(false), _passgiven(false), _quitted(false){
     std::cout << "User created with fd: " << fd << " and hostmask: " << hostmask << std::endl;
     memset(&_address, 0, sizeof(_address));
 }
@@ -81,6 +80,12 @@ int User::getPollInd()
 void User::setPollInd(int i)
 {
 	_pollInd = i;
+}
+
+
+pollfd *User::getPollfd()
+{
+	return(_fdPtr);
 }
 
 void User::setPollPtr(pollfd *pfd)

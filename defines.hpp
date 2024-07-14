@@ -15,6 +15,11 @@
 # define ERR_NONICKNAMEGIVEN 431
 # define ERR_ERRONEUSNICKNAME 432 // characters not allowed
 # define ERR_NICKNAMEINUSE 433
-// # define
+
+//actions after polling
+# define ACCEPT 1
+# define RECEIVE 2
+# define SEND 3
+# define EMPTY 0 //empty cycle when all queues are empty and no incoming connection
 
 #endif

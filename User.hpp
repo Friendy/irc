@@ -13,7 +13,6 @@ class User {
 private:
 	std::string _user;
 	std::string _nick;
-	std::string _host;
 	std::string _last_msg; //last recieved message
 	const int _fd;
 	std::string _hostmask;
@@ -38,6 +37,7 @@ public:
 	void setNick(std::string nick);
 	int getFd();
 	int getPollInd();
+	pollfd *getPollfd();
 	// const std::string getMsg(std::string msg);
 	void setLastMsg(std::string msg);
 	void registerUser();
