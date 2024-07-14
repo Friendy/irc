@@ -48,6 +48,7 @@ private:
 	std::string _pass;
 	pollfd	_userPoll[SOMAXCONN];
 	nfds_t 	_activePoll;
+	std::map<std::string, Channel*> _channels;
 
 	//TODO: implement send queue
 	//TODO: update introductory message: should contain:
@@ -109,6 +110,7 @@ What needs to be done
 	std::string fQuit(std::vector<std::string> params, User &user);
 	std::string fPriv(std::vector<std::string> params, User &user);
 	std::string fUnknown(std::vector<std::string> params, User &user);
+	std::string fjoin(std::vector<std::string> params, User &user);
 
 	/* ******Helper functions****** */
 	void create_hint(struct addrinfo *hint);

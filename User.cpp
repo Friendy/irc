@@ -181,5 +181,10 @@ bool User::hasquitted()
 	return(_quitted);
 }
 
+void User::joinChannel(Channel *channel) {
+    _channels.push_back(channel);
+    // Kanala katılma işlemleri
+}
+
 /*DESTRUCTOR*/
 User::~User(){}
