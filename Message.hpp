@@ -11,21 +11,18 @@ class Message {
 
 private:
 	std::string _msg;
-	std::vector<pollfd *> _fds;
-	bool _repushed;
+	// std::vector<pollfd *> _fds;
+	pollfd* _fdPtr;
 
 public:
-	const std::string getMsg();
+	const std::string getMsg() const;
 	void setMsg(std::string msg);
 	// std::vector<int> getFds();
 	// void addFd(int fd);
 	void addFd(pollfd *fd);
-	int sendMsg(int fd);
-	void sendMsg();
+	int sendMsg();
 	void addNewLine();
-	bool sendIncomplete();
-	void setrepushed(bool repushed);
-	bool isrepushed();
+	pollfd* getPollfd() const;
 
 	Message();
 	Message(std::string msg);
