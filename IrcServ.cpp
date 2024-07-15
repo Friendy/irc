@@ -558,6 +558,11 @@ std::string IrcServ::fPing(std::vector<std::string> params, User &user)
 	return("PONG irc.server.com");
 }
 
+void IrcServ::check_user()
+{
+
+}
+
 /*
 :nick!user@127.0.0.1 PRIVMSG nick :msg
 or

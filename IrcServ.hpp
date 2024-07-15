@@ -48,9 +48,9 @@ private:
 	std::string _pass;
 	pollfd	_userPoll[SOMAXCONN];
 	nfds_t 	_activePoll;
-	int _cycle;
 	std::queue<User*> _recvQ;
 	std::queue<int> _actionQ;
+	void check_user();
 
 	//TODO: implement send queue
 	//TODO: update introductory message: should contain:
