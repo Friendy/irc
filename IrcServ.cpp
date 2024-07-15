@@ -302,10 +302,8 @@ std::string IrcServ::buildNotice(const std::string msg, int code)
 	std::string new_msg;
 
 	ss << ":" << _server_name << " NOTICE";
-	if (code != 0 && code != 55)
+	if (code != 0)
 		ss << " " << code  << " " << _codes[code];
-	if(code == 55)
-		ss << "";
 	if (msg != "")
 		ss << " :" << msg;
 	std::getline(ss, new_msg);
@@ -362,31 +360,31 @@ creates response and pushes it to the sending queue.
 */
 void IrcServ::recieve_msg()
 {
-	char buf[512];
-	bzero(buf, 512);
-	std::string msg;
-	Message response;
-	User *currentUser;
+    char buf[512];
+    bzero(buf, 512);
+    std::string msg;
+    Message response;
+    User *currentUser;
 
-	if (!_recvQ.empty())
-	{
-		currentUser = _recvQ.front();
-		if ( _userPoll[currentUser->getPollInd()].revents & POLLIN)//if pollling showed ready for recieving
-		{
-			recv(currentUser->getFd(), buf, 512, 0);
-			msg = std::string(buf);
-			response = processMsg(*currentUser, msg);
-			if (response.getMsg() != "")
-				_msgQ.push(response);
-			bzero(buf, 512);
-		}
-		_recvQ.pop();
-		if (currentUser->hasquitted())
-			delete_user(currentUser);
-		else
-			_recvQ.push(currentUser);
-	}
+    if (!_recvQ.empty())
+    {
+        currentUser = _recvQ.front();
+        if (_userPoll[currentUser->getPollInd()].revents & POLLIN) // if polling showed ready for receiving
+        {
+            recv(currentUser->getFd(), buf, 512, 0);
+            msg = std::string(buf);
+            std::cout << "Received message: " << msg << std::endl; // Log received message
+            processMsg(*currentUser, msg);
+            bzero(buf, 512);
+        }
+        _recvQ.pop();
+        if (currentUser->hasquitted())
+            delete_user(currentUser);
+        else
+            _recvQ.push(currentUser);
+    }
 }
+
 
 
 // sends the first mesage from the send queue
@@ -418,44 +416,60 @@ CAP command ignored because
 Message IrcServ::processMsg(User &user, std::string msg)
 {
     Message response("");
-    Command com;
+    std::istringstream stream(msg);
+    std::string line;
 
-    trimMsg(msg);
-    user.setLastMsg(msg);
-    if (msg != "")
+    while (std::getline(stream, line))
     {
-        com = parseMsg(msg);
+        trimMsg(line);
+        if (line.empty())
+            continue;
+
+        user.setLastMsg(line);
+        Command com = parseMsg(line);
+        std::cout << "Command received: " << com.getCommand() << " with parameters: ";
+        for (size_t i = 0; i < com.getParams().size(); ++i)
+            std::cout << com.getParams()[i] << " ";
+        std::cout << std::endl;
+
         if (com.getCommand() == "CAP")
         {
-            std::cout << "CAP command received: " << msg << std::endl;
-		    response.setMsg("CAP * LS :multi-prefix");
+            std::cout << "CAP command received: " << line << std::endl;
+            response.setMsg("CAP * LS :multi-prefix");
             response.addFd(&_userPoll[user.getPollInd()]);
-            return response;
+            _msgQ.push(response);
+            continue;
         }
-        std::cout << "Received from " << user.getFd() << ": " << msg << std::endl;
+
+        std::cout << "Received from " << user.getFd() << ": " << line << std::endl;
         if (com.getCommand() == "NOTICE")
         {
-            std::cout << "NOTICE command received: " << msg << std::endl;
-            return response;
+            std::cout << "NOTICE command received: " << line << std::endl;
+            continue;
         }
         if (com.getCommand() == "JOIN")
         {
-            std::cout << "JOIN command received: " << msg << std::endl;
+            std::cout << "JOIN command received: " << line << std::endl;
             response = fjoin(com.getParams(), user);
             std::cout << "JOIN command processed: " << response.getMsg() << std::endl;
         }
+
         if (com.getCommand() == "PRIVMSG")
             response.addFd(getPollfd(com.getParam(1)));
         else
-		{
+        {
             response.addFd(&_userPoll[user.getPollInd()]);
-		}
+        }
+
         if (_commands.find(com.getCommand()) == _commands.end())
             com.replaceCommand("UNKNOWN");
+
         response.setMsg((this->*_commands[com.getCommand()])(com.getParams(), user));
+        _msgQ.push(response);
     }
     return response;
 }
+
 
 
 
@@ -467,15 +481,15 @@ bool compare_until_cr(const std::string &a, const std::string &b) {
         std::cout << "Comparing a[" << i << "] = " << static_cast<int>(a[i]) << " with b[" << i << "] = " << static_cast<int>(b[i]) << std::endl;
         if (a[i] == '\r') {
             std::cout << "CR found in 'a', stopping comparison" << std::endl;
-            return true;  // CR karakterine kadar eşleşti
+            return true;
         }
         if (a[i] != b[i]) {
             std::cout << "Characters do not match, comparison failed" << std::endl;
-            return false;  // Karakterler eşleşmiyor
+            return false;
         }
     }
     std::cout << "End of 'b' reached, all characters matched" << std::endl;
-    return a[i] == '\r';  // a'nın bir sonraki karakteri CR ise true döner
+    return true; 
 }
 
 std::string IrcServ::fPass(std::vector<std::string> params, User &user)
