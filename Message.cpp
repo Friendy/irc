@@ -52,22 +52,21 @@ pollfd *Message::getPollfd() const
 //sending a message to one fd
 int Message::sendMsg()
 {
-    if (!_fdPtr)
+	if (!_fdPtr)
     {
         std::cerr << "File descriptor is null" << std::endl;
-        return 0;
+        return 1;
     }
-    // std::string msgToSend = _msg + "\r\n";
-    std::cout << "Sending message: " << _msg << std::endl; // Log the message to be sent
-    ssize_t bytes_sent = send(_fdPtr->fd, _msg.data(), _msg.length(), 0);
-    if (bytes_sent == -1)
-    {
-        Err::handler(0, "sending message failed: ", _msg);
-        return (0);
-    }
-    else
-        std::cout << "Sent to " << _fdPtr->fd << ": " << _msg << "\n";
-    return (1);
+	addNewLine();
+	ssize_t bytes_sent = send(_fdPtr->fd, _msg.data(), _msg.length(), 0);
+	if (bytes_sent == -1)
+	{
+		Err::handler(0, "sending message failed: ", _msg);
+		return (0);
+	}
+	else
+		std::cout << "Sent to " << _fdPtr->fd << ": " << _msg;
+	return(1);
 }
 
 

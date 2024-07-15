@@ -302,8 +302,10 @@ std::string IrcServ::buildNotice(const std::string msg, int code)
 	std::string new_msg;
 
 	ss << ":" << _server_name << " NOTICE";
-	if (code != 0)
+	if (code != 0 && code != 55)
 		ss << " " << code  << " " << _codes[code];
+	if(code == 55)
+		ss << "";
 	if (msg != "")
 		ss << " :" << msg;
 	std::getline(ss, new_msg);
@@ -394,7 +396,6 @@ void IrcServ::sendQueue()
     if (!_msgQ.empty())
     {
         response = &_msgQ.front();
-        std::cout << "Attempting to send message: " << response->getMsg() << std::endl;
         if (response->sendMsg() == 0) // if sending failed, the message is pushed to the queue again
         {
             std::cout << "Failed to send message, requeuing: " << response->getMsg() << std::endl;
@@ -427,6 +428,8 @@ Message IrcServ::processMsg(User &user, std::string msg)
         if (com.getCommand() == "CAP")
         {
             std::cout << "CAP command received: " << msg << std::endl;
+		    response.setMsg("CAP * LS :multi-prefix");
+            response.addFd(&_userPoll[user.getPollInd()]);
             return response;
         }
         std::cout << "Received from " << user.getFd() << ": " << msg << std::endl;
@@ -444,7 +447,9 @@ Message IrcServ::processMsg(User &user, std::string msg)
         if (com.getCommand() == "PRIVMSG")
             response.addFd(getPollfd(com.getParam(1)));
         else
+		{
             response.addFd(&_userPoll[user.getPollInd()]);
+		}
         if (_commands.find(com.getCommand()) == _commands.end())
             com.replaceCommand("UNKNOWN");
         response.setMsg((this->*_commands[com.getCommand()])(com.getParams(), user));
@@ -456,19 +461,37 @@ Message IrcServ::processMsg(User &user, std::string msg)
 
 
 /* ******Command functions****** */
+bool compare_until_cr(const std::string &a, const std::string &b) {
+    size_t i = 0;
+    for (; i < b.length(); ++i) {
+        std::cout << "Comparing a[" << i << "] = " << static_cast<int>(a[i]) << " with b[" << i << "] = " << static_cast<int>(b[i]) << std::endl;
+        if (a[i] == '\r') {
+            std::cout << "CR found in 'a', stopping comparison" << std::endl;
+            return true;  // CR karakterine kadar eşleşti
+        }
+        if (a[i] != b[i]) {
+            std::cout << "Characters do not match, comparison failed" << std::endl;
+            return false;  // Karakterler eşleşmiyor
+        }
+    }
+    std::cout << "End of 'b' reached, all characters matched" << std::endl;
+    return a[i] == '\r';  // a'nın bir sonraki karakteri CR ise true döner
+}
+
 std::string IrcServ::fPass(std::vector<std::string> params, User &user)
 {
 	if (user.passGiven())
 		return(buildNotice("You may not reregister", ERR_ALREADYREGISTRED));
 	if (params.empty())
 		return(buildNotice("PASS :Not enough parameters", ERR_NEEDMOREPARAMS));
-	if (params[0] == _pass)
+	std::string pass_param = params[0];
+	if (compare_until_cr(pass_param, _pass))
 	{
 		user.givePass();
 		return(buildNotice("The password is correct. Now please provide your nick: NICK <nick>.", 0));
 	}
 	else
-		return(buildNotice("The password is incorrect. Please try again", ERR_PASSWDMISMATCH));
+		return(buildNotice("The password is incorrect. Please try again!", ERR_PASSWDMISMATCH));
 }
 
 std::string IrcServ::fNick(std::vector<std::string> params, User &user)
