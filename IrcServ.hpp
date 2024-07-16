@@ -48,9 +48,10 @@ private:
 	std::string _pass;
 	pollfd	_userPoll[SOMAXCONN];
 	nfds_t 	_activePoll;
-	std::queue<User*> _recvQ;
+	nfds_t 	_startInd;
+	nfds_t 	_curRecvFd;
 	std::queue<int> _actionQ;
-	void check_user();
+
 
 	//TODO: implement send queue
 	//TODO: update introductory message: should contain:
@@ -119,10 +120,11 @@ What needs to be done
 	void trimMsg(std::string &msg);
 	std::string get_next_word(std::string str, size_t &start);
 	pollfd *getPollfd(std::string nick);
-	pollfd *getFirstRecv();
 	pollfd *getFirstSend();
 	int getAction();
 	bool readyToAction(int action);
+	void check_user();
+	void setRecvFd();
 
 public:
 	void recieve_msg();
