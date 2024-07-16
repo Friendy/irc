@@ -26,7 +26,6 @@
 #include <cstring>
 #include <cerrno>
 #include <poll.h>
-#include <sstream>
 #include <queue>
 #include "defines.hpp"
 #include "Message.hpp"
@@ -49,9 +48,10 @@ private:
 	pollfd	_userPoll[SOMAXCONN];
 	nfds_t 	_activePoll;
 	std::map<std::string, Channel*> _channels;
-	int _cycle;
-	std::queue<User*> _recvQ;
 	std::queue<int> _actionQ;
+	nfds_t 	_startInd;
+	nfds_t 	_curRecvFd;
+
 
 	//TODO: implement send queue
 	//TODO: update introductory message: should contain:
@@ -121,11 +121,11 @@ What needs to be done
 	void trimMsg(std::string &msg);
 	std::string get_next_word(std::string str, size_t &start);
 	pollfd *getPollfd(std::string nick);
-	pollfd *getFirstRecv();
 	pollfd *getFirstSend();
 	int getAction();
 	bool readyToAction(int action);
-
+	void check_user();
+	void setRecvFd();
 
 public:
 	void recieve_msg();
