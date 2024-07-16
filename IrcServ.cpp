@@ -349,6 +349,41 @@ Command IrcServ::parseMsg(const std::string msg)
 	return (com);
 }
 
+/* scans through the pollfd array and gets the first fd that is ready after polling
+in the next cycle the scan starts from the next index where we stopped */
+void IrcServ::setRecvFd()
+{
+	nfds_t ind = _startInd;
+	bool ready;
+
+	//at first we start at _startInd and finish at _activePoll
+	while(!(ready = _userPoll[ind].revents & POLLIN) && ind <= _activePoll)
+		ind++;
+	//if we found it
+	if (ready == true)
+	{
+		if (ind == _activePoll)
+			_startInd = 0;
+		else
+			_startInd = ind + 1;
+		_curRecvFd = _userPoll[ind].fd;
+		return;
+	}
+	else if (_startInd != 0)//we go through the rest
+	{
+		ind = 0;
+		while(!(ready = _userPoll[ind].revents & POLLIN) && ind < _startInd)
+			ind++;
+		if (ready == true)
+		{
+			_startInd = ind + 1;
+			_curRecvFd = _userPoll[ind].fd;
+			return;
+		}
+	}
+	_curRecvFd = 0;
+}
+
 /* for each user receives a message, processes it,
 creates response and pushes it to the sending queue.
 */

@@ -26,7 +26,6 @@
 #include <cstring>
 #include <cerrno>
 #include <poll.h>
-#include <sstream>
 #include <queue>
 #include "defines.hpp"
 #include "Message.hpp"
@@ -52,7 +51,6 @@ private:
 	std::queue<int> _actionQ;
 	nfds_t 	_startInd;
 	nfds_t 	_curRecvFd;
-	std::queue<int> _actionQ;
 
 
 	//TODO: implement send queue
