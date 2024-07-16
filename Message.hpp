@@ -15,14 +15,14 @@ private:
 	pollfd* _fdPtr;
 
 public:
-	const std::string getMsg();
+	const std::string getMsg() const;
 	void setMsg(std::string msg);
 	// std::vector<int> getFds();
 	// void addFd(int fd);
 	void addFd(pollfd *fd);
 	int sendMsg();
 	void addNewLine();
-	pollfd* getPollfd();
+	pollfd* getPollfd() const;
 
 	Message();
 	Message(std::string msg);

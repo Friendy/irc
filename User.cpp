@@ -82,7 +82,6 @@ void User::setPollInd(int i)
 	_pollInd = i;
 }
 
-
 pollfd *User::getPollfd()
 {
 	return(_fdPtr);
@@ -184,6 +183,11 @@ void User::quitted()
 bool User::hasquitted()
 {
 	return(_quitted);
+}
+
+void User::joinChannel(Channel *channel) {
+    _channels.push_back(channel);
+    // Kanala katılma işlemleri
 }
 
 /*DESTRUCTOR*/

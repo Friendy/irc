@@ -8,6 +8,9 @@
 #include <netinet/in.h>
 #include <poll.h>
 
+// Forward declaration of Channel class
+class Channel;
+
 class User {
 
 private:
@@ -23,6 +26,7 @@ private:
 	bool _quitted;
 	int _pollInd; //index of user fd in poll array
 	pollfd *_fdPtr;//pointer to pollfd structure
+	std::vector<Channel*> _channels; 
 
 public:
 	const std::string getUser();
@@ -46,6 +50,7 @@ public:
 	void givePass();
 	void quitted();
 	bool hasquitted();
+	void joinChannel(Channel *channel);
 	// Command parseMsg();
 
 	// User();

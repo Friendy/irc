@@ -48,6 +48,8 @@ private:
 	std::string _pass;
 	pollfd	_userPoll[SOMAXCONN];
 	nfds_t 	_activePoll;
+	std::map<std::string, Channel*> _channels;
+	std::queue<int> _actionQ;
 	nfds_t 	_startInd;
 	nfds_t 	_curRecvFd;
 	std::queue<int> _actionQ;
@@ -92,8 +94,8 @@ What needs to be done
 	void setupSocket(const char* protname, long port_tmp, struct addrinfo *addr_info);
 
 	/* ******Message sending functions ********** */
-	// void send_msg(int fd, std::string msg);
-	// void send_msg(std::string msg);
+	//void send_msg(int fd, std::string msg);
+	//void send_msg(std::string msg);
 	void sendQueue();
 	std::string buildPriv(const std::string msg, std::string from, std::string to);
 	std::string welcome(User user);
@@ -103,7 +105,7 @@ What needs to be done
 	// std::string processMsg(User &user, std::string msg);
 	Message processMsg(User &user, std::string msg);
 	Command parseMsg(const std::string msg);
-	// void delete_user(std::map<const int, User *>::iterator &it);
+	//void delete_user(std::map<const int, User *>::iterator &it);
 	void delete_user(User *user);
 
 	/* ******Command functions****** */
@@ -114,6 +116,7 @@ What needs to be done
 	std::string fQuit(std::vector<std::string> params, User &user);
 	std::string fPriv(std::vector<std::string> params, User &user);
 	std::string fUnknown(std::vector<std::string> params, User &user);
+	std::string fjoin(std::vector<std::string> params, User &user);
 
 	/* ******Helper functions****** */
 	void create_hint(struct addrinfo *hint);

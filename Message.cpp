@@ -1,9 +1,10 @@
 #include "Message.hpp"
 
 /*CONSTRUCTORS*/
-Message::Message(){};
+Message::Message() : _fdPtr(NULL) {};
 
-Message::Message(std::string msg) : _msg(msg){};
+Message::Message(std::string msg) : _msg(msg), _fdPtr(NULL) {};
+
 
 Message::Message(std::string msg, pollfd *fd) : _msg(msg)
 {
@@ -28,7 +29,7 @@ Message::Message(Message const &original)
 
 /*FUNCTIONS*/
 
-const std::string Message::getMsg()
+const std::string Message::getMsg() const
 {
 	return(this->_msg);
 }
@@ -43,7 +44,7 @@ void Message::addFd(pollfd *fd)
 	_fdPtr = fd;
 }
 
-pollfd *Message::getPollfd()
+pollfd *Message::getPollfd() const
 {
 	return(_fdPtr);
 }
@@ -51,6 +52,11 @@ pollfd *Message::getPollfd()
 //sending a message to one fd
 int Message::sendMsg()
 {
+	if (!_fdPtr)
+    {
+        std::cerr << "File descriptor is null" << std::endl;
+        return 1;
+    }
 	addNewLine();
 	ssize_t bytes_sent = send(_fdPtr->fd, _msg.data(), _msg.length(), 0);
 	if (bytes_sent == -1)
@@ -62,6 +68,8 @@ int Message::sendMsg()
 		std::cout << "Sent to " << _fdPtr->fd << ": " << _msg;
 	return(1);
 }
+
+
 
 //sending a message to all fds
 //before sending we check polling result

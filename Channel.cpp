@@ -6,6 +6,10 @@ Channel::Channel()
 	std::cout << "class created" << std::endl;
 }
 
+Channel::Channel(const std::string &name){
+	//std::cout << "class created" << std::endl;
+}
+
 //Assignment operator:
 Channel &Channel::operator=(Channel const &original)
 {
@@ -33,14 +37,16 @@ void Channel::setName(std::string name)
 	this->_name = name;
 }
 
-const std::vector<User> Channel::getUsers()
-{
-	return(this->_users);
+const std::vector<User*>& Channel::getUsers() const {
+    return _users;
 }
 
-void Channel::setUsers(std::vector<User> users)
-{
-	this->_users = users;
+void Channel::setUsers(const std::vector<User*>& users) {
+    _users = users;
+}
+
+void Channel::addUser(User &user) {
+    _users.push_back(&user);
 }
 
 /*DESTRUCTOR*/
