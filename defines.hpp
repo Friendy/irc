@@ -16,6 +16,9 @@
 # define ERR_NONICKNAMEGIVEN 431
 # define ERR_ERRONEUSNICKNAME 432 // characters not allowed
 # define ERR_NICKNAMEINUSE 433
+# define ERR_NOSUCHCHANNEL 403
+# define ERR_CHANOPRIVSNEEDED 482
+# define ERR_NOSUCHNICK 401
 
 //actions after polling
 # define ACCEPT 1
