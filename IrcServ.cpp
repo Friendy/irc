@@ -17,6 +17,7 @@ IrcServ::IrcServ(std::string pass) : _server_name("irc.server.com")
 	_commands["NICK"] = &IrcServ::fNick;
 	_commands["PING"] = &IrcServ::fPing;
 	_commands["QUIT"] = &IrcServ::fQuit;
+	_commands["MODE"] = &IrcServ::fMode;
 	_commands["PRIVMSG"] = &IrcServ::fPriv;
 	_commands["UNKNOWN"] = &IrcServ::fUnknown;
 	_commands["JOIN"] = &IrcServ::fjoin;
@@ -25,7 +26,10 @@ IrcServ::IrcServ(std::string pass) : _server_name("irc.server.com")
 	_codes[ERR_ALREADYREGISTRED] = "ERR_ALREADYREGISTRED";
 	_codes[ERR_NOTREGISTERED] = "ERR_NOTREGISTERED";
 	_codes[ERR_NEEDMOREPARAMS] = "ERR_NEEDMOREPARAMS";
-	_codes[ERR_PASSWDMISMATCH] = "ERR_PASSWDMISMATCH";
+	_codes[ERR_NOSUCHCHANNEL] = "ERR_NOSUCHCHANNEL";
+	_codes[ERR_CHANOPRIVSNEEDED] = "ERR_CHANOPRIVSNEEDED";
+	_codes[ERR_NOSUCHNICK] = "ERR_NOSUCHNICK";
+	_codes[ERR_BADCHANNELKEY] = "ERR_BADCHANNELKEY";
 }
 
 //Assignment operator:
@@ -56,7 +60,7 @@ void IrcServ::addToPoll(int fd) {
 	if (_activePoll >= SOMAXCONN)
 		Err::handler(1, "too many connections", "");
 	_userPoll[_activePoll].fd = fd;
-	_userPoll[_activePoll].events = POLLIN | POLLOUT;//mrubina: added POLLOUT for sending
+	_userPoll[_activePoll].events = POLLIN | POLLOUT;
 	_activePoll++;
 }
 
@@ -82,18 +86,14 @@ void IrcServ::accept_client() {
     _users[fd] = new User(fd, hostmask);
     _users[fd]->setAddress(dest_addr);
     addToPoll(fd);
-	_users[fd]->setPollInd(_activePoll - 1);//mrubina: added index to user for easy access
-	_users[fd]->setPollPtr(&_userPoll[_activePoll - 1]);//mrubina: added pointer to pollfd strcture for easy access
+	_users[fd]->setPollInd(_activePoll - 1);
+	_users[fd]->setPollPtr(&_userPoll[_activePoll - 1]);
 
-    // send_msg(fd, "Please provide the password: PASS <password>\n");//will be removed after polling
-	// buildNotice("Please provide the password: PASS <password>", 0);
 	Message response(buildNotice("Please provide the password: PASS <password>", 0), &_userPoll[_activePoll - 1]);
 	_msgQ.push(response);
-	// send_msg(fd, "001 RPL_WELCOME \n");
 
     std::cout << "Client connected" << std::endl;
 }
-
 
 void IrcServ::setupSocket(const char* protname, long port_tmp, struct addrinfo *addr_info) {
 	struct protoent *prot_struct;
@@ -110,8 +110,6 @@ void IrcServ::setupSocket(const char* protname, long port_tmp, struct addrinfo *
 	if (setsockopt(_listenfd, SOL_SOCKET, SO_REUSEADDR, (const char*)&optVal, optLen) == -1) {
 		Err::handler(1, "setsockopt error", "");
 	}
-// Set the socket to non-blocking mode using fcntl. This ensures that socket operations (e.g., read, write)
-// return immediately if they cannot be completed, instead of blocking the execution.
 	fcntl(_listenfd, F_SETFL, O_NONBLOCK);
 	if (_listenfd == -1) {
 		Err::handler(1, "setsockopt error", "");
@@ -135,55 +133,43 @@ void IrcServ::setupSocket(const char* protname, long port_tmp, struct addrinfo *
 
 void IrcServ::server_start(const char* protname, const char* port, const char* hostname)
 {
-	int err;
-	int pollReturn;
-	struct addrinfo *addr_info; //addrinfo structure
-	struct addrinfo hint;
-	long port_tmp = strtol(port, NULL, 0);
-/* filling out address info structure
-some members of this structure will later be used
-as arguments for other functions
-addr_info->ai_addr
-*/
-	if (port_tmp <= 0 || port_tmp > 65535)
-		Err::handler(1, "invalid port: ", port);
-	create_hint(&hint);
-	err = getaddrinfo(hostname, port, &hint, &addr_info);
-	if (err != 0)
-		Err::handler(1, "can't get info for ", hostname);
+    int err;
+    int pollReturn;
+    struct addrinfo *addr_info;
+    struct addrinfo hint;
+    long port_tmp = strtol(port, NULL, 0);
 
-	setupSocket(protname, port_tmp, addr_info);
+    if (port_tmp <= 0 || port_tmp > 65535)
+        Err::handler(1, "invalid port: ", port);
+    create_hint(&hint);
+    err = getaddrinfo(hostname, port, &hint, &addr_info);
+    if (err != 0)
+        Err::handler(1, "can't get info for ", hostname);
 
-//to do save fds in the class and watch their count as many clients connect
-	int action;
-	while(1)
-	{
-		pollReturn = poll(_userPoll, _activePoll, 5000);
-		if (pollReturn == -1)
-			Err::handler(1, "poll error", "");
-		action = getAction();
-		switch (action)
-		{
-			case ACCEPT:
-			{
-				accept_client();
-				break;
-			}
-			case RECEIVE:
-			{
-				recieve_msg();
-				break;
-			}
-			case SEND:
-			{
-				sendQueue();
-				break;
-			}
-			default:
-				;
-		}
-	}
+    setupSocket(protname, port_tmp, addr_info);
 
+    int action;
+    while (1)
+    {
+        pollReturn = poll(_userPoll, _activePoll, 5000);
+        if (pollReturn == -1)
+            Err::handler(1, "poll error", "");
+        action = getAction();
+        switch (action)
+        {
+            case ACCEPT:
+                accept_client();
+                break;
+            case RECEIVE:
+                recieve_msg();
+                break;
+            case SEND:
+                sendQueue();
+                break;
+            default:
+                ;
+        }
+    }
 }
 
 void IrcServ::fd_map()
@@ -219,32 +205,26 @@ checks if a message from any user can be received or
 checks if the connection can be accepted */
 bool IrcServ::readyToAction(int action)
 {
-	pollfd *fd;
-	switch (action)
-	{
-		case ACCEPT:
-		{
-			fd = &_userPoll[0];
-			break;
-		}
-		case RECEIVE:
-		{
-			setRecvFd();
-			return (_curRecvFd != 0);
-		}
-		case SEND:
-		{
-			fd = getFirstSend();
-			break;
-		}
-		default:
-			return(false);
-	}
-	if (fd == NULL)
-		return(false);
-	if (action == SEND)
-		return(fd->revents & POLLOUT);
-	return(fd->revents & POLLIN);
+    pollfd *fd;
+    switch (action)
+    {
+        case ACCEPT:
+            fd = &_userPoll[0];
+            break;
+        case RECEIVE:
+            setRecvFd();
+            return (_curRecvFd != 0);
+        case SEND:
+            fd = getFirstSend();
+            break;
+        default:
+            return false;
+    }
+    if (fd == NULL)
+        return false;
+    if (action == SEND)
+        return(fd->revents & POLLOUT);
+    return(fd->revents & POLLIN);
 }
 
 /* if the first action of the queue is not ready to be perfomed
@@ -254,23 +234,24 @@ so that the next cycle started with the next action
 */
 int IrcServ::getAction()
 {
-	int action = _actionQ.front();
-	int max = 2;
-	int count = 0;
-	int ready;
-	while(!(ready = readyToAction(action)) && count <= max)
-	{
-		_actionQ.pop();
-		_actionQ.push(action);
-		count++;
-		if (count < 3)
-			action = _actionQ.front();
-	}
-	if (ready == false)
-		return(EMPTY);
-	_actionQ.pop();
-	_actionQ.push(action);
-	return(action);
+    int action = _actionQ.front();
+    int max = 2;
+    int count = 0;
+    int ready;
+    while (!(ready = readyToAction(action)) && count <= max)
+    {
+        _actionQ.pop();
+        _actionQ.push(action);
+        count++;
+        if (count < 3)
+            action = _actionQ.front();
+    }
+    if (!ready)
+        return EMPTY;
+    _actionQ.pop();
+    _actionQ.push(action);
+    std::cout << "Action ready: " << action << std::endl;
+    return action;
 }
 
 //deletes user from the server(after disconnecting it)
@@ -280,46 +261,21 @@ void IrcServ::delete_user(User *user, std::string reason)
 	int fd;
 
 	fd = user->getFd();
-	close(fd) == -1;
+	close(fd);
 	_nicks.erase(user->getNick());
 	delete(user);
 	_users.erase(fd);
 	std::cout << "Client " << reason << "(fd " << fd << ").\n";
 }
 
-/* ******Message sending functions ********** */
-/* sending a message to a user */
-// void IrcServ::send_msg(int fd, std::string msg)
-// {
-// 	ssize_t bytes_sent = send(fd, msg.data(), msg.length(), 0);
-// 	if (bytes_sent == -1)
-// 		Err::handler(1, "sending message failed: ", msg);
-// 	else
-// 		std::cout << "Sent: " << msg << "\n";
-// }
-
-// /* sending a message to all users */
-// void IrcServ::send_msg(std::string msg)
-// {
-// 	std::map<const int, User *>::iterator it;
-// 	for (it = _users.begin(); it != _users.end(); ++it)
-// 		send_msg(it->second->getFd(), msg);
-// }
-
-
 std::string IrcServ::buildPriv(const std::string msg, std::string from, std::string to)
 {
 	std::stringstream ss;
 	std::string new_msg;
 
-	ss << ":" << from << " PRIVMSG " << to;
-	if (msg != "")
-		ss << " " << msg;
+	ss << ":" << from << " PRIVMSG " << to << " :" << msg;
 	std::getline(ss, new_msg);
-	return (new_msg);
-// :irc.server.com NOTICE 462 ERR_ALREADYREGISTRED
-// :nick!user@127.0.0.1 PRIVMSG nick :msg
-
+	return new_msg;
 }
 
 std::string IrcServ::buildNotice(const std::string msg, int code)
@@ -358,8 +314,6 @@ std::string IrcServ::buildQuit(User user)
 	return (new_msg);
 }
 
-/* ******General message processing functions********** */
-//extracts command and parameters
 Command IrcServ::parseMsg(const std::string msg)
 {
 	size_t start;
@@ -374,12 +328,6 @@ Command IrcServ::parseMsg(const std::string msg)
 	Command com(get_next_word(msg, start));
 	if (com.getCommand() == "PRIVMSG")
 		com.setParam(pref);
-	/* 	//TODO add parsing for join, PRIVMSG
-	PRIVMSG #channel :msg
-	:nick!user@127.0.0.1 PRIVMSG #channel :msg
-	:nick!user@127.0.0.1 PRIVMSG nick :msg
-	NOTICE RPL_WELCOME :LAGCHECK 1720120129566735-yeah-:)
-	*/
 	while (start != std::string::npos)
 	{
 		start = msg.find(' ', start); //finding first space after previous word
@@ -399,10 +347,8 @@ void IrcServ::setRecvFd()
 	nfds_t ind = _startInd;
 	bool ready;
 
-	//at first we start at _startInd and finish at _activePoll - 1
 	while(!(ready = _userPoll[ind].revents & POLLIN) && ind < _activePoll)
 		ind++;
-	//if we found it
 	if (ready == true)
 	{
 		if (ind == _activePoll - 1)
@@ -412,7 +358,7 @@ void IrcServ::setRecvFd()
 		_curRecvFd = _userPoll[ind].fd;
 		return;
 	}
-	else if (_startInd != 1)//we go through the rest
+	else if (_startInd != 1)
 	{
 		ind = 1;
 		while(!(ready = _userPoll[ind].revents & POLLIN) && ind < _startInd)
@@ -435,7 +381,6 @@ void IrcServ::recieve_msg()
     char buf[512];
     bzero(buf, 512);
     std::string msg;
-    Message response;
     User *currentUser;
 	ssize_t bytes_recieved;
 
@@ -447,7 +392,7 @@ void IrcServ::recieve_msg()
 		return;
 	}
     msg = std::string(buf);
-    std::cout << "Received message: " << msg << std::endl; // Log received message
+    std::cout << "Received message: " << msg << std::endl;
    	processMsg(*currentUser, msg);
     	bzero(buf, 512);
 }
@@ -456,10 +401,11 @@ void IrcServ::recieve_msg()
 //cases when we send message to the queue the user exists but when we are about to snd this message user doesn't exist
 void IrcServ::sendQueue()
 {
-    Message *response;
+    std::cout << "sendQueue called" << std::endl;
     if (!_msgQ.empty())
     {
-        response = &_msgQ.front();
+        Message *response = &_msgQ.front();
+        std::cout << "Processing message: " << response->getMsg() << std::endl;
         if (response->sendMsg() == 0) // if sending failed, the message is pushed to the queue again
         {
             std::cout << "Failed to send message, requeuing: " << response->getMsg() << std::endl;
@@ -478,10 +424,6 @@ void IrcServ::sendQueue()
 }
 
 
-/*
-trims message, saves it for the user, executes command using an appropriate function
-CAP command ignored because
-*/
 Message IrcServ::processMsg(User &user, std::string msg)
 {
     Message response("");
@@ -507,24 +449,32 @@ Message IrcServ::processMsg(User &user, std::string msg)
             response.setMsg("CAP * LS :multi-prefix");
             response.addFd(&_userPoll[user.getPollInd()]);
             _msgQ.push(response);
-            continue;
+            std::cout << "CAP response added to message queue" << std::endl;
+            break;
         }
 
         std::cout << "Received from " << user.getFd() << ": " << line << std::endl;
         if (com.getCommand() == "NOTICE")
         {
             std::cout << "NOTICE command received: " << line << std::endl;
-            continue;
+            break;
         }
         if (com.getCommand() == "JOIN")
         {
             std::cout << "JOIN command received: " << line << std::endl;
             response = fjoin(com.getParams(), user);
             std::cout << "JOIN command processed: " << response.getMsg() << std::endl;
+			break;
         }
 
         if (com.getCommand() == "PRIVMSG")
-            response.addFd(getPollfd(com.getParam(1)));
+        {
+            std::string privResponse = fPriv(com.getParams(), user);
+            if (privResponse != "")
+                _msgQ.push(Message(privResponse, &_userPoll[user.getPollInd()]));
+            std::cout << "PRIVMSG response added to message queue" << std::endl;
+			break;
+        }
         else
         {
             response.addFd(&_userPoll[user.getPollInd()]);
@@ -535,15 +485,13 @@ Message IrcServ::processMsg(User &user, std::string msg)
 		if (com.getCommand() == "QUIT")
 			response.setQuitMsg(WAIT);
         _msgQ.push(response);
+        std::cout << com.getCommand() << " response added to message queue" << std::endl;
     }
     return response;
 }
 
 
 
-
-
-/* ******Command functions****** */
 bool compare_until_cr(const std::string &a, const std::string &b) {
     size_t i = 0;
     for (; i < b.length(); ++i) {
@@ -588,7 +536,6 @@ std::string IrcServ::fNick(std::vector<std::string> params, User &user)
 		return(buildNotice("Please provide the password first: PASS <password>", 0));
 	//TODO check if nick characters are all allowed
 	if (_nicks.find(params[0]) != _nicks.end())
-		// return("Error: Nickname is already in use");
 		return(buildNotice("Nickname is already in use!", ERR_NICKNAMEINUSE));
 	else
 	{
@@ -613,7 +560,6 @@ std::string IrcServ::fUser(std::vector<std::string> params, User &user)
 	std::cout << "param " << params[0] << "\n";
 	user.setUser(params[0]);
 	user.registerUser();
-	// return("irc.server.com NOTICE 001 RPL_WELCOME");
 	return(welcome(user));
 }
 
@@ -635,20 +581,9 @@ std::string IrcServ::fPing(std::vector<std::string> params, User &user)
 	
 // }
 
-/*
-:nick!user@127.0.0.1 PRIVMSG nick :msg
-or
-PRIVMSG nick :msg
-params[0] - full name of the sender
-params[1] - nick of the receiver
-params[2] - msg
-//TODO handling the case of incorrect message
- */
-
-std::string IrcServ::fjoin(std::vector<std::string> params, User &user)
-{
+std::string IrcServ::fjoin(std::vector<std::string> params, User &user) {
     if (!user.isRegistered()) {
-        return buildNotice("You are not registered join", ERR_NOTREGISTERED);
+        return buildNotice("You are not registered to join", ERR_NOTREGISTERED);
     }
     if (params.empty()) {
         return buildNotice("No channel name given", ERR_NEEDMOREPARAMS);
@@ -656,28 +591,102 @@ std::string IrcServ::fjoin(std::vector<std::string> params, User &user)
 
     std::string channelName = params[0];
     Channel* channel;
+    std::string responseMessage;
 
     if (_channels.find(channelName) == _channels.end()) {
-        // Kanal yoksa yeni bir kanal oluştur
         channel = new Channel(channelName);
+        if (params.size() == 2) {
+            channel->setPassword(params[1]);
+            channel->setInviteOnly(true);
+        }
+        channel->addUser(user);
+        channel->addOperator(user);
         _channels[channelName] = channel;
+        responseMessage = "Created and joined channel " + channelName;
     } else {
         channel = _channels[channelName];
+
+        if (channel->isInviteOnly() && !channel->isOperator(user)) {
+            return buildNotice("Cannot join channel, invite only", ERR_CHANOPRIVSNEEDED);
+        }
+
+        if (channel->getPassword() != "" && (params.size() < 2 || channel->getPassword() != params[1])) {
+            return buildNotice("Invalid channel key", ERR_BADCHANNELKEY);
+        }
+
+        if (channel->getUserLimit() > 0 && channel->getUsers().size() >= channel->getUserLimit()) {
+            return buildNotice("Channel is full", ERR_NEEDMOREPARAMS);
+        }
+
+        channel->addUser(user);
+        responseMessage = "Joined channel " + channelName;
     }
 
-    channel->addUser(user);
-    user.joinChannel(channel);
+    // Notify other users in the channel about the new user
+    std::map<int, User*> users = channel->getUsers();
+    for (std::map<int, User*>::iterator it = users.begin(); it != users.end(); ++it) {
+        if (it->second->getNick() != user.getNick()) {
+            std::string joinMsg = buildPriv("has joined the channel", user.getFullName(), channelName);
+            _msgQ.push(Message(joinMsg, it->second->getPollfd()));
+        }
+    }
 
-    return buildNotice("Joined channel " + channelName, 0);
+    // Update channel info for all users
+    for (std::map<int, User*>::iterator it = users.begin(); it != users.end(); ++it) {
+        std::string channelInfo = buildPriv("Channel info updated", user.getFullName(), channelName);
+        _msgQ.push(Message(channelInfo, it->second->getPollfd()));
+    }
+
+    return buildNotice(responseMessage, 0);
 }
 
-std::string IrcServ::fPriv(std::vector<std::string> params, User &user)
-{
-	std::string from;
-	if (params[0] == "")
-		return(buildPriv(params[2], user.getFullName(), params[1]));
-	return(buildPriv(params[2], params[0], params[1]));
+
+
+
+
+
+
+std::string IrcServ::fPriv(std::vector<std::string> params, User &user) {
+    if (params.size() < 2) {
+        return buildNotice("Invalid PRIVMSG format", ERR_NEEDMOREPARAMS);
+    }
+
+    std::string target = params[1]; // target channel or user
+    std::string message = params[2]; // message content
+
+    std::cout << "Target: " << target << std::endl;
+    std::cout << "Message: " << message << std::endl;
+
+    // Check if the target is a channel
+    if (_channels.find(target) != _channels.end()) {
+		 std::cout << " 1 " << std::endl;
+        Channel* channel = _channels[target];
+        std::map<int, User*> users = channel->getUsers();
+        for (std::map<int, User*>::iterator it = users.begin(); it != users.end(); ++it) {
+            if (it->second->getNick() != user.getNick()) {
+                std::string privMsg = buildPriv(message, user.getFullName(), target);
+                _msgQ.push(Message(privMsg, it->second->getPollfd()));
+            }
+        }
+        return " ";
+    } 
+    // Check if the target is a user
+    else if (_nicks.find(target) != _nicks.end()) {
+		std::cout << " 2 " << std::endl;
+        std::string privMsg = buildPriv(message, user.getFullName(), target);
+        _msgQ.push(Message(privMsg, getPollfd(target)));
+        return "";
+    } 
+    // If target is neither a channel nor a user
+    else {
+		std::cout << " 3 " << std::endl;
+        return buildNotice("No such nick/channel", ERR_NOSUCHNICK);
+    }
 }
+
+
+
+
 
 std::string IrcServ::fUnknown(std::vector<std::string> params, User &user)
 {
@@ -686,14 +695,11 @@ std::string IrcServ::fUnknown(std::vector<std::string> params, User &user)
 	return(str);
 }
 
-//sets quitted flag and closes user socket afer getting a QUIT message
-//the user is deleted from the server list in delete_user function
 std::string IrcServ::fQuit(std::vector<std::string> params, User &user)
 {
 	return(buildQuit(user));
 }
 
-/* ******Helper functions****** */
 void IrcServ::create_hint(struct addrinfo *hint)
 {
 	hint->ai_socktype = SOCK_STREAM;
@@ -728,7 +734,7 @@ std::string IrcServ::get_next_word(std::string str, size_t &start)
 	std::string sub;
 
 	if (str[start] == ' ')
-		start = str.find_first_not_of(' ', start);//finding start of the current word
+		start = str.find_first_not_of(' ', start);
 	end = str.find(' ', start);
 	if (end == std::string::npos || str[start] == ':')
 	{
@@ -751,17 +757,20 @@ void IrcServ::trimMsg(std::string &msg)
 		msg.erase(msg.length() - 1);
 }
 
-//we have a nick of a user and we have to get its pollfd
-pollfd *IrcServ::getPollfd(std::string nick)
-{
-	User *user;
-	user = _users[_nicks[nick]];
-	return(&_userPoll[user->getPollInd()]);
+pollfd* IrcServ::getPollfd(std::string nick) {
+    if (_nicks.find(nick) == _nicks.end()) {
+        std::cerr << "Nick not found: " << nick << std::endl;
+        return NULL;
+    }
+    User* user = _users[_nicks[nick]];
+    if (!user) {
+        std::cerr << "User pointer is null for nick: " << nick << std::endl;
+        return NULL;
+    }
+    return &_userPoll[user->getPollInd()];
 }
 
 
-
-//getting first pollfd from sending queue
 pollfd *IrcServ::getFirstSend()
 {
 

@@ -116,6 +116,7 @@ What needs to be done
 	std::string fPriv(std::vector<std::string> params, User &user);
 	std::string fUnknown(std::vector<std::string> params, User &user);
 	std::string fjoin(std::vector<std::string> params, User &user);
+	std::string fMode(std::vector<std::string> params, User &user);
 
 	/* ******Helper functions****** */
 	void create_hint(struct addrinfo *hint);
