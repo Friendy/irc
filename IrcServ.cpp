@@ -67,6 +67,7 @@ void IrcServ::accept_client() {
     socklen_t dest_len = sizeof(dest_addr);
     char host[INET_ADDRSTRLEN];
     fd = accept(_listenfd, (struct sockaddr *)&dest_addr, &dest_len);
+	std::cout << "fd: " << fd << std::endl;
     if (fd == -1) {
         if (errno != EAGAIN && errno != EWOULDBLOCK) {
             Err::handler(1, "new socket not created", strerror(errno));
@@ -119,7 +120,7 @@ void IrcServ::setupSocket(const char* protname, long port_tmp, struct addrinfo *
 	hint.sin_family = AF_INET;
 	port_tmp = (int) port_tmp;
 	inet_pton(AF_INET, "0.0.0.0", &hint.sin_addr);
-	
+
 	isbound = bind(_listenfd, addr_info->ai_addr, addr_info->ai_addrlen);
 	if (isbound == -1)
 		Err::handler(1, "not bound", "");
@@ -185,6 +186,34 @@ addr_info->ai_addr
 
 }
 
+void IrcServ::fd_map()
+{
+	int ind = 0;
+	std::cout << "activePoll: "  << _activePoll << "\n";
+	std::cout << "-----fd-----" << "----POLLIN----" << "----POLLOUT----" << "\n";
+	while(ind < _activePoll)
+	{
+		std::cout  << "    " << _userPoll[ind].fd << "             "<<(_userPoll[ind].revents & POLLIN) << "        "<< (_userPoll[ind].revents & POLLOUT) << "\n";
+		ind++;
+	}
+}
+
+void IrcServ::Qmap()
+{
+	int ind = 0;
+	Message msg;
+
+	if (_msgQ.empty())
+	{
+		std::cout  << "empty\n";
+		return;
+	}
+	msg = _msgQ.front();
+	std::cout  << "next: fd - " << msg.getPollfd()->fd << " msg - "<< msg.getMsg() << "\n";
+	msg = _msgQ.back();
+	std::cout  << "last: fd - " << msg.getPollfd()->fd << " msg - "<< msg.getMsg() << "\n";
+}
+
 /* checks if the first message of the send queue can be send or
 checks if a message from any user can be received or
 checks if the connection can be accepted */
@@ -245,14 +274,17 @@ int IrcServ::getAction()
 }
 
 //deletes user from the server(after disconnecting it)
-void IrcServ::delete_user(User *user)
+//TODO deleting the user pollfd from the polling array shifting all other fds if necessary.
+void IrcServ::delete_user(User *user, std::string reason)
 {
 	int fd;
 
 	fd = user->getFd();
+	close(fd) == -1;
 	_nicks.erase(user->getNick());
 	delete(user);
 	_users.erase(fd);
+	std::cout << "Client " << reason << "(fd " << fd << ").\n";
 }
 
 /* ******Message sending functions ********** */
@@ -315,6 +347,17 @@ std::string IrcServ::welcome(User user)
 	return (new_msg);
 }
 
+std::string IrcServ::buildQuit(User user)
+{
+	std::stringstream ss;
+	std::string new_msg;
+
+	ss << ":" << user.getFullName();
+	ss << " QUIT :Goodbye";
+	std::getline(ss, new_msg);
+	return (new_msg);
+}
+
 /* ******General message processing functions********** */
 //extracts command and parameters
 Command IrcServ::parseMsg(const std::string msg)
@@ -356,22 +399,22 @@ void IrcServ::setRecvFd()
 	nfds_t ind = _startInd;
 	bool ready;
 
-	//at first we start at _startInd and finish at _activePoll
-	while(!(ready = _userPoll[ind].revents & POLLIN) && ind <= _activePoll)
+	//at first we start at _startInd and finish at _activePoll - 1
+	while(!(ready = _userPoll[ind].revents & POLLIN) && ind < _activePoll)
 		ind++;
 	//if we found it
 	if (ready == true)
 	{
-		if (ind == _activePoll)
-			_startInd = 0;
+		if (ind == _activePoll - 1)
+			_startInd = 1;
 		else
 			_startInd = ind + 1;
 		_curRecvFd = _userPoll[ind].fd;
 		return;
 	}
-	else if (_startInd != 0)//we go through the rest
+	else if (_startInd != 1)//we go through the rest
 	{
-		ind = 0;
+		ind = 1;
 		while(!(ready = _userPoll[ind].revents & POLLIN) && ind < _startInd)
 			ind++;
 		if (ready == true)
@@ -394,18 +437,23 @@ void IrcServ::recieve_msg()
     std::string msg;
     Message response;
     User *currentUser;
+	ssize_t bytes_recieved;
 
     currentUser = _users[_curRecvFd];
-    recv(_curRecvFd, buf, 512, 0);
+    bytes_recieved = recv(_curRecvFd, buf, 512, 0);
+	if (bytes_recieved == 0)
+    {
+		delete_user(currentUser, "disconnected");
+		return;
+	}
     msg = std::string(buf);
     std::cout << "Received message: " << msg << std::endl; // Log received message
    	processMsg(*currentUser, msg);
     	bzero(buf, 512);
-    if (currentUser->hasquitted())
-        delete_user(currentUser);
 }
 
 // sends the first mesage from the send queue
+//cases when we send message to the queue the user exists but when we are about to snd this message user doesn't exist
 void IrcServ::sendQueue()
 {
     Message *response;
@@ -421,6 +469,9 @@ void IrcServ::sendQueue()
         else
         {
             std::cout << "Message sent successfully: " << response->getMsg() << std::endl;
+			//if this is a quit message we delete user
+			if (response->isQuitMsg() == 1)
+				delete_user((_users[response->getPollfd()->fd]), "quitted");
             _msgQ.pop(); // Pop the message from the queue after successful sending
         }
     }
@@ -478,11 +529,11 @@ Message IrcServ::processMsg(User &user, std::string msg)
         {
             response.addFd(&_userPoll[user.getPollInd()]);
         }
-
         if (_commands.find(com.getCommand()) == _commands.end())
             com.replaceCommand("UNKNOWN");
-
         response.setMsg((this->*_commands[com.getCommand()])(com.getParams(), user));
+		if (com.getCommand() == "QUIT")
+			response.setQuitMsg(WAIT);
         _msgQ.push(response);
     }
     return response;
@@ -507,7 +558,7 @@ bool compare_until_cr(const std::string &a, const std::string &b) {
         }
     }
     std::cout << "End of 'b' reached, all characters matched" << std::endl;
-    return true; 
+    return true;
 }
 
 std::string IrcServ::fPass(std::vector<std::string> params, User &user)
@@ -571,10 +622,18 @@ std::string IrcServ::fPing(std::vector<std::string> params, User &user)
 	return("PONG irc.server.com");
 }
 
-void IrcServ::check_user()
-{
-
-}
+// void IrcServ::check_user()
+// {
+// 	std::map<const int, User *>::iterator it;
+// 	for (it = _users.begin(); it != _users.end(); ++it)
+// 	{
+// 		if (it->second->hasquitted())
+// 			delete_user(&user, "quitted");
+// 	}
+// 		std::cout << "fd: " << it->second->getFd() << "\n";
+// 	std::cout << "end\n";
+	
+// }
 
 /*
 :nick!user@127.0.0.1 PRIVMSG nick :msg
@@ -631,9 +690,7 @@ std::string IrcServ::fUnknown(std::vector<std::string> params, User &user)
 //the user is deleted from the server list in delete_user function
 std::string IrcServ::fQuit(std::vector<std::string> params, User &user)
 {
-	user.quitted();
-	close(user.getFd());
-	return("");
+	return(buildQuit(user));
 }
 
 /* ******Helper functions****** */
@@ -707,6 +764,12 @@ pollfd *IrcServ::getPollfd(std::string nick)
 //getting first pollfd from sending queue
 pollfd *IrcServ::getFirstSend()
 {
+
+	//if the user doesn't exists we delete it and rotate the queue
+	while (!_msgQ.empty() && _users.find(_msgQ.front().getPollfd()->fd) == _users.end())
+	{
+		_msgQ.pop();
+	}
 	if (!_msgQ.empty())
 		return(_msgQ.front().getPollfd());
 	else

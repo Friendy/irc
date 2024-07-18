@@ -5,24 +5,25 @@
 # include <vector>
 # include "User.hpp"
 # include "Err.hpp"
+# include "defines.hpp"
 #include <poll.h>
 
 class Message {
 
 private:
 	std::string _msg;
-	// std::vector<pollfd *> _fds;
 	pollfd* _fdPtr;
+	int _isquitmsg;
 
 public:
 	const std::string getMsg() const;
 	void setMsg(std::string msg);
-	// std::vector<int> getFds();
-	// void addFd(int fd);
 	void addFd(pollfd *fd);
 	int sendMsg();
 	void addNewLine();
 	pollfd* getPollfd() const;
+	int isQuitMsg();
+	void setQuitMsg(int status);
 
 	Message();
 	Message(std::string msg);

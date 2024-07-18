@@ -3,10 +3,10 @@
 /*CONSTRUCTORS*/
 Message::Message() : _fdPtr(NULL) {};
 
-Message::Message(std::string msg) : _msg(msg), _fdPtr(NULL) {};
+Message::Message(std::string msg) : _msg(msg), _fdPtr(NULL), _isquitmsg(EXIST) {};
 
 
-Message::Message(std::string msg, pollfd *fd) : _msg(msg)
+Message::Message(std::string msg, pollfd *fd) : _msg(msg), _isquitmsg(EXIST)
 {
 	_fdPtr = fd;
 }
@@ -18,6 +18,7 @@ Message &Message::operator=(Message const &original)
 	{
 		this->_fdPtr = original._fdPtr;
 		this->_msg = original._msg;
+		this->_isquitmsg = original._isquitmsg;
 	}
 	return(*this);
 }
@@ -36,6 +37,7 @@ const std::string Message::getMsg() const
 
 void Message::setMsg(std::string msg)
 {
+
 	this->_msg = msg;
 }
 
@@ -48,6 +50,17 @@ pollfd *Message::getPollfd() const
 {
 	return(_fdPtr);
 }
+
+int Message::isQuitMsg()
+{
+	return(_isquitmsg);
+}
+
+void Message::setQuitMsg(int status)
+{
+	_isquitmsg = status;
+}
+
 
 //sending a message to one fd
 int Message::sendMsg()

@@ -97,6 +97,7 @@ What needs to be done
 	void sendQueue();
 	std::string buildPriv(const std::string msg, std::string from, std::string to);
 	std::string welcome(User user);
+	std::string buildQuit(User user);
 	std::string buildNotice(const std::string msg, int code);
 
 	/* ******General message processing functions********** */
@@ -104,7 +105,7 @@ What needs to be done
 	Message processMsg(User &user, std::string msg);
 	Command parseMsg(const std::string msg);
 	//void delete_user(std::map<const int, User *>::iterator &it);
-	void delete_user(User *user);
+	void delete_user(User *user, std::string reason);
 
 	/* ******Command functions****** */
 	std::string fPass(std::vector<std::string> params, User &user);
@@ -124,11 +125,13 @@ What needs to be done
 	pollfd *getFirstSend();
 	int getAction();
 	bool readyToAction(int action);
-	void check_user();
+	// void check_user();
 	void setRecvFd();
 
 public:
 	void recieve_msg();
+	void fd_map();//test function will be deleted in final version
+	void Qmap();//test function will be deleted in final version
 
 	/* ******Connection related functions********** */
 	void server_start(const char* protname, const char* port, const char* hostname);

@@ -23,4 +23,8 @@
 # define SEND 3
 # define EMPTY 0 //empty cycle when all queues are empty and no incoming connection
 
+//quit status
+# define EXIST 0
+# define WAIT 1 //will quit after quit message is send
+
 #endif

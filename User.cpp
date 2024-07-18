@@ -4,7 +4,7 @@
 // User::User(){}
 
 
-User::User(int fd) : _fd(fd), _isregistered(false), _passgiven(false), _quitted(false){};
+User::User(int fd) : _fd(fd), _isregistered(false), _passgiven(false), _quitstatus(0){};
 
 //Assignment operator:
 User &User::operator=(User const &original)
@@ -24,7 +24,7 @@ User::User(User const &original) : _fd(original._fd)
 }
 
 
-User::User(int fd, const std::string &hostmask) : _fd(fd), _hostmask(hostmask), _isregistered(false), _passgiven(false), _quitted(false){
+User::User(int fd, const std::string &hostmask) : _fd(fd), _hostmask(hostmask), _isregistered(false), _passgiven(false), _quitstatus(0){
     std::cout << "User created with fd: " << fd << " and hostmask: " << hostmask << std::endl;
     memset(&_address, 0, sizeof(_address));
 }
@@ -80,11 +80,6 @@ int User::getPollInd()
 void User::setPollInd(int i)
 {
 	_pollInd = i;
-}
-
-pollfd *User::getPollfd()
-{
-	return(_fdPtr);
 }
 
 void User::setPollPtr(pollfd *pfd)
@@ -175,14 +170,14 @@ void User::givePass()
 	_passgiven = true;
 }
 
-void User::quitted()
+void User::setQuitStatus(int status)
 {
-	_quitted = true;
+	_quitstatus = status;
 }
 
-bool User::hasquitted()
+int User::getQuitStatus()
 {
-	return(_quitted);
+	return(_quitstatus);
 }
 
 void User::joinChannel(Channel *channel) {

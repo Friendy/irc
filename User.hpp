@@ -23,10 +23,10 @@ private:
 	bool _isregistered;
 	bool _passgiven;
 	struct sockaddr_in _address;
-	bool _quitted;
+	int _quitstatus;
 	int _pollInd; //index of user fd in poll array
 	pollfd *_fdPtr;//pointer to pollfd structure
-	std::vector<Channel*> _channels; 
+	std::vector<Channel*> _channels;
 
 public:
 	const std::string getUser();
@@ -48,8 +48,8 @@ public:
 	bool isRegistered();
 	bool passGiven();
 	void givePass();
-	void quitted();
-	bool hasquitted();
+	int getQuitStatus();
+	void setQuitStatus(int status);
 	void joinChannel(Channel *channel);
 	// Command parseMsg();
 
