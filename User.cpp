@@ -77,6 +77,11 @@ int User::getPollInd()
 	return(this->_pollInd);
 }
 
+pollfd *User::getPollfd()
+{
+	return(_fdPtr);
+}
+
 void User::setPollInd(int i)
 {
 	_pollInd = i;
