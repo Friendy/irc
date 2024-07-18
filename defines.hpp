@@ -19,6 +19,7 @@
 # define ERR_NOSUCHCHANNEL 403
 # define ERR_CHANOPRIVSNEEDED 482
 # define ERR_NOSUCHNICK 401
+# define ERR_BADCHANNELKEY 475
 
 //actions after polling
 # define ACCEPT 1

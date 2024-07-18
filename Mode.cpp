@@ -2,6 +2,13 @@
 
 std::string IrcServ::fMode(std::vector<std::string> params, User &user)
 {
+    std::cout << "fMode called with params: ";
+    for (size_t i = 0; i < params.size(); ++i)
+    {
+        std::cout << i <<  params[i] <<" ";
+    }
+    std::cout << std::endl;
+
     if (params.size() < 2)
         return buildNotice("Not enough parameters for MODE", ERR_NEEDMOREPARAMS);
 
