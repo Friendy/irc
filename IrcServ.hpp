@@ -24,6 +24,7 @@
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <cstring>
+#include <ctime>
 #include <cerrno>
 #include <poll.h>
 #include <queue>
@@ -51,9 +52,10 @@ private:
 	std::queue<int> _actionQ;
 	nfds_t 	_startInd;
 	nfds_t 	_curRecvFd;
+	struct tm _savedTime;
 
 
-	//TODO: implement send queue
+
 	//TODO: update introductory message: should contain:
 	//TODO: user count, sever name and version
 	//TODO: nick history
@@ -98,6 +100,7 @@ What needs to be done
 	std::string buildPriv(const std::string msg, std::string from, std::string to);
 	std::string welcome(User user);
 	std::string buildQuit(User user);
+	std::string buildPing(User user);
 	std::string buildNotice(const std::string msg, int code);
 
 	/* ******General message processing functions********** */
@@ -112,6 +115,7 @@ What needs to be done
 	std::string fUser(std::vector<std::string> params, User &user);
 	std::string fNick(std::vector<std::string> params, User &user);
 	std::string fPing(std::vector<std::string> params, User &user);
+	std::string fPong(std::vector<std::string> params, User &user);
 	std::string fQuit(std::vector<std::string> params, User &user);
 	std::string fPriv(std::vector<std::string> params, User &user);
 	std::string fUnknown(std::vector<std::string> params, User &user);
@@ -126,8 +130,8 @@ What needs to be done
 	pollfd *getFirstSend();
 	int getAction();
 	bool readyToAction(int action);
-	// void check_user();
 	void setRecvFd();
+	void checkActivity();
 
 public:
 	void recieve_msg();

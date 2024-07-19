@@ -4,7 +4,11 @@
 // User::User(){}
 
 
-User::User(int fd) : _fd(fd), _isregistered(false), _passgiven(false), _quitstatus(0){};
+User::User(int fd) : _fd(fd), _isregistered(false), _passgiven(false), _quitstatus(0)
+{
+	_lastactivitytm = time(NULL);
+	_pingsendtm = 0;
+}
 
 //Assignment operator:
 User &User::operator=(User const &original)
@@ -13,6 +17,8 @@ User &User::operator=(User const &original)
 	{
 		this->_user = original._user;
 		this->_nick = original._nick;
+		this->_lastactivitytm = original._lastactivitytm;
+		this->_pingsendtm = original._pingsendtm;
 		this->_hostmask = original._hostmask;
 	}
 	return(*this);
@@ -26,6 +32,8 @@ User::User(User const &original) : _fd(original._fd)
 
 User::User(int fd, const std::string &hostmask) : _fd(fd), _hostmask(hostmask), _isregistered(false), _passgiven(false), _quitstatus(0){
     std::cout << "User created with fd: " << fd << " and hostmask: " << hostmask << std::endl;
+	_lastactivitytm = time(NULL);
+	_pingsendtm = 0;
     memset(&_address, 0, sizeof(_address));
 }
 
@@ -102,54 +110,6 @@ void User::setLastMsg(std::string msg)
 	_last_msg = msg;
 }
 
-
-// const std::string User::getMsg(std::string msg)
-// {
-// 	_last_msg = "";
-// 	_last_msg = msg;
-// 	if (*(_last_msg.rbegin()) == '\n')
-// 		_last_msg.erase(_last_msg.length() - 1);
-// 	if (*(_last_msg.rbegin()) == 13)
-// 		_last_msg.erase(_last_msg.length() - 1);
-// 	if (_last_msg != "")
-// 		std::cout << "Recieved: " << _last_msg << "\n";
-// 	return (_last_msg);
-// }
-
-// Command User::parseMsg()
-// {
-// 	size_t start;
-// 	// std::string word;
-
-// 	start = _last_msg.find_first_not_of(' '); //ignore starting spaces
-// 	Command com(get_next_word(_last_msg, start));
-// 	while (start != std::string::npos)
-// 	{
-// 		start = _last_msg.find(' ', start + 1);
-// 		if (start != std::string::npos)
-// 		{
-// 			start = _last_msg.find_first_not_of(' ', start + 1);
-// 			com.setParam(get_next_word(_last_msg, start));
-// 		}
-// 	}
-// 	_last_msg = "";
-// 	return (com);
-// }
-
-// void User::processMsg()
-// {
-// 	if (_last_msg != "")
-// 	{
-// 		Command com = parseMsg();
-// 		// std::cout << "com: " << com.getCommand() << "\n";
-// 		// if (com.paramCount() != 0)
-// 		// 	std::cout << "par: " << com.getParam(0) << "\n";
-// 		if (_isregistered == false)
-// 			registerUser(com);
-// 	}
-// }
-
-
 void User::registerUser()
 {
 	_isregistered = true;
@@ -189,6 +149,41 @@ void User::joinChannel(Channel *channel) {
     _channels.push_back(channel);
     // Kanala katılma işlemleri
 }
+
+void User::saveLastActivity()
+{
+	_lastactivitytm = time(NULL);
+}
+
+time_t User::getLastActivity()
+{
+	return(_lastactivitytm);
+}
+
+void User::saveLastPing()
+{
+	_pingsendtm = time(NULL);
+}
+
+time_t User::getPingTime()
+{
+	return(_pingsendtm);
+}
+
+double User::timeSinceActivity()
+{
+	time_t curr_time;
+	curr_time = time(NULL);
+	return(difftime(curr_time, _lastactivitytm));
+}
+
+double User::timeSincePing()
+{
+	time_t curr_time;
+	curr_time = time(NULL);
+	return(difftime(curr_time, _pingsendtm));
+}
+
 
 /*DESTRUCTOR*/
 User::~User(){}

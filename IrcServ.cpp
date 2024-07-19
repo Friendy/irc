@@ -16,6 +16,7 @@ IrcServ::IrcServ(std::string pass) : _server_name("irc.server.com")
 	_commands["USER"] = &IrcServ::fUser;
 	_commands["NICK"] = &IrcServ::fNick;
 	_commands["PING"] = &IrcServ::fPing;
+	// _commands["PONG"] = &IrcServ::fPong;
 	_commands["QUIT"] = &IrcServ::fQuit;
 	_commands["MODE"] = &IrcServ::fMode;
 	_commands["PRIVMSG"] = &IrcServ::fPriv;
@@ -169,6 +170,9 @@ void IrcServ::server_start(const char* protname, const char* port, const char* h
             default:
                 ;
         }
+		if (!_users.empty())
+			checkActivity();
+		// sleep(3);
     }
 }
 
@@ -314,6 +318,16 @@ std::string IrcServ::buildQuit(User user)
 	return (new_msg);
 }
 
+std::string IrcServ::buildPing(User user)
+{
+	std::stringstream ss;
+	std::string new_msg;
+
+	ss << "PING " << user.getNick();
+	std::getline(ss, new_msg);
+	return (new_msg);
+}
+
 Command IrcServ::parseMsg(const std::string msg)
 {
 	size_t start;
@@ -391,6 +405,7 @@ void IrcServ::recieve_msg()
 		delete_user(currentUser, "disconnected");
 		return;
 	}
+	currentUser->saveLastActivity();
     msg = std::string(buf);
     std::cout << "Received message: " << msg << std::endl;
    	processMsg(*currentUser, msg);
@@ -418,6 +433,9 @@ void IrcServ::sendQueue()
 			//if this is a quit message we delete user
 			if (response->isQuitMsg() == 1)
 				delete_user((_users[response->getPollfd()->fd]), "quitted");
+			//in case of ping save ping send time
+			if (response->isPing() == 1)
+				_users[response->getPollfd()->fd]->saveLastPing();
             _msgQ.pop(); // Pop the message from the queue after successful sending
         }
     }
@@ -466,7 +484,11 @@ Message IrcServ::processMsg(User &user, std::string msg)
             std::cout << "JOIN command processed: " << response.getMsg() << std::endl;
 			break;
         }
-
+		if (com.getCommand() == "PONG")
+		{
+			std::cout << "PONG command received: " << line << std::endl;
+			break;
+		}
         if (com.getCommand() == "PRIVMSG")
         {
             std::string privResponse = fPriv(com.getParams(), user);
@@ -484,8 +506,11 @@ Message IrcServ::processMsg(User &user, std::string msg)
         response.setMsg((this->*_commands[com.getCommand()])(com.getParams(), user));
 		if (com.getCommand() == "QUIT")
 			response.setQuitMsg(WAIT);
-        _msgQ.push(response);
-        std::cout << com.getCommand() << " response added to message queue" << std::endl;
+		if (response.getMsg() != "")
+		{
+			_msgQ.push(response);
+			std::cout << com.getCommand() << " response added to message queue" << std::endl;
+		}
     }
     return response;
 }
@@ -568,18 +593,35 @@ std::string IrcServ::fPing(std::vector<std::string> params, User &user)
 	return("PONG irc.server.com");
 }
 
-// void IrcServ::check_user()
-// {
-// 	std::map<const int, User *>::iterator it;
-// 	for (it = _users.begin(); it != _users.end(); ++it)
-// 	{
-// 		if (it->second->hasquitted())
-// 			delete_user(&user, "quitted");
-// 	}
-// 		std::cout << "fd: " << it->second->getFd() << "\n";
-// 	std::cout << "end\n";
-	
-// }
+/* goes through all users and deletes a user if its pong interval is too long
+otherwise if enough time from the previous ping pushes ping mesage for a user to the queue
+*/
+void IrcServ::checkActivity()
+{
+	User *user;
+	std::map<const int, User *>::iterator it = _users.begin();
+	while (it != _users.end())
+	{
+		user = it->second;
+		if (user->getPingTime() > 0 && user->timeSincePing() > PONGTIMEOUT
+			&& user->getLastActivity() < user->getPingTime())
+		{
+			std::cout << " Activity waiting interval exceeded" << std::endl;
+			it++;
+			delete_user(user, "disconnected");
+			continue;
+		}
+		else if (user->timeSinceActivity() > PINGINERVAL
+			&& (user->getPingTime() == 0 || user->timeSincePing() > PONGTIMEOUT))
+		{
+			Message msg(buildPing(*user), user->getPollfd());
+			msg.setPing();
+			_msgQ.push(msg);
+			std::cout << msg.getMsg() << "message added to message queue" << std::endl;
+		}
+		it++;
+	}
+}
 
 std::string IrcServ::fjoin(std::vector<std::string> params, User &user) {
     if (!user.isRegistered()) {
@@ -684,10 +726,6 @@ std::string IrcServ::fPriv(std::vector<std::string> params, User &user) {
     }
 }
 
-
-
-
-
 std::string IrcServ::fUnknown(std::vector<std::string> params, User &user)
 {
 	std::string str("421 ERR_UNKNOWNCOMMAND ");
@@ -700,6 +738,16 @@ std::string IrcServ::fQuit(std::vector<std::string> params, User &user)
 	return(buildQuit(user));
 }
 
+
+/* ******Time related functions****** */
+// void IrcServ::saveTime()
+// {
+// 	_savedTime.
+// }
+// struct tm IrcServ::getTime();
+
+
+/* ******Helper functions****** */
 void IrcServ::create_hint(struct addrinfo *hint)
 {
 	hint->ai_socktype = SOCK_STREAM;
@@ -774,7 +822,7 @@ pollfd* IrcServ::getPollfd(std::string nick) {
 pollfd *IrcServ::getFirstSend()
 {
 
-	//if the user doesn't exists we delete it and rotate the queue
+	//if the user doesn't exists we delete the message and rotate the queue
 	while (!_msgQ.empty() && _users.find(_msgQ.front().getPollfd()->fd) == _users.end())
 	{
 		_msgQ.pop();

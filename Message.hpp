@@ -14,6 +14,7 @@ private:
 	std::string _msg;
 	pollfd* _fdPtr;
 	int _isquitmsg;
+	int _isping;
 
 public:
 	const std::string getMsg() const;
@@ -24,6 +25,8 @@ public:
 	pollfd* getPollfd() const;
 	int isQuitMsg();
 	void setQuitMsg(int status);
+	int isPing();
+	void setPing();
 
 	Message();
 	Message(std::string msg);

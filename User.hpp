@@ -7,6 +7,7 @@
 #include <cstring>
 #include <netinet/in.h>
 #include <poll.h>
+#include <ctime>
 
 // Forward declaration of Channel class
 class Channel;
@@ -27,6 +28,8 @@ private:
 	int _pollInd; //index of user fd in poll array
 	pollfd *_fdPtr;//pointer to pollfd structure
 	std::vector<Channel*> _channels;
+	time_t _lastactivitytm;//time when the last message is recieved
+	time_t _pingsendtm;//time when the last ping is sent
 
 public:
 	const std::string getUser();
@@ -51,6 +54,13 @@ public:
 	int getQuitStatus();
 	void setQuitStatus(int status);
 	void joinChannel(Channel *channel);
+	void saveLastPing();
+	void saveLastActivity();
+	time_t getPingTime();
+	time_t getLastActivity();
+	// time_t getInterval(struct timeval before, struct timeval after);
+	double timeSinceActivity();
+	double timeSincePing();
 	// Command parseMsg();
 
 	// User();

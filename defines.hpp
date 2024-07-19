@@ -31,4 +31,8 @@
 # define EXIST 0
 # define WAIT 1 //will quit after quit message is send
 
+//intervals
+# define PINGINERVAL 30
+# define PONGTIMEOUT 35
+
 #endif

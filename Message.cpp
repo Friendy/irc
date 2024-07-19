@@ -3,10 +3,10 @@
 /*CONSTRUCTORS*/
 Message::Message() : _fdPtr(NULL) {};
 
-Message::Message(std::string msg) : _msg(msg), _fdPtr(NULL), _isquitmsg(EXIST) {};
+Message::Message(std::string msg) : _msg(msg), _fdPtr(NULL), _isquitmsg(EXIST), _isping(0) {};
 
 
-Message::Message(std::string msg, pollfd *fd) : _msg(msg), _isquitmsg(EXIST)
+Message::Message(std::string msg, pollfd *fd) : _msg(msg), _isquitmsg(EXIST), _isping(0)
 {
 	_fdPtr = fd;
 }
@@ -19,6 +19,7 @@ Message &Message::operator=(Message const &original)
 		this->_fdPtr = original._fdPtr;
 		this->_msg = original._msg;
 		this->_isquitmsg = original._isquitmsg;
+		this->_isping = original._isping;
 	}
 	return(*this);
 }
@@ -59,6 +60,16 @@ int Message::isQuitMsg()
 void Message::setQuitMsg(int status)
 {
 	_isquitmsg = status;
+}
+
+int Message::isPing()
+{
+	return(_isping);
+}
+
+void Message::setPing()
+{
+	_isping = 1;
 }
 
 
