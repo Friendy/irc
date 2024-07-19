@@ -32,8 +32,8 @@
 # define WAIT 1 //will quit after quit message is send
 
 //intervals
-# define PINGINERVAL 30
-# define PONGTIMEOUT 35
+# define PINGINERVAL 120
+# define PONGTIMEOUT 180
 # define QUITTIMEOUT 35
 
 #endif

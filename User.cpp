@@ -9,6 +9,8 @@ User::User(int fd) : _fd(fd), _isregistered(false), _passgiven(false), _quitstat
 	_lastactivitytm = time(NULL);
 	_pingsendtm = 0;
 	_quitsendtm = 0;
+	_buffer = "";
+	_msg_incomplete = false;
 }
 
 //Assignment operator:
@@ -37,6 +39,8 @@ User::User(int fd, const std::string &hostmask) : _fd(fd), _hostmask(hostmask), 
 	_lastactivitytm = time(NULL);
 	_pingsendtm = 0;
 	_quitsendtm = 0;
+	_buffer = "";
+	_msg_incomplete = false;
     memset(&_address, 0, sizeof(_address));
 }
 
@@ -146,6 +150,29 @@ void User::setQuitStatus(int status)
 int User::getQuitStatus()
 {
 	return(_quitstatus);
+}
+
+void User::setMsgIncomplete(bool status)
+{
+	_msg_incomplete = status;
+}
+
+bool User::isIncomplete()
+{
+	return(_msg_incomplete);
+}
+
+std::string User::msgAppend(std::string msg, int last)
+{
+	_buffer.append(msg);
+	if (last == 1)
+		_msg_incomplete = false;
+	return(_buffer);
+}
+
+void User::clearBuffer()
+{
+	_buffer = "";
 }
 
 void User::joinChannel(Channel *channel) {

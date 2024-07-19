@@ -31,6 +31,8 @@ private:
 	time_t _lastactivitytm;//time when the last message is recieved
 	time_t _pingsendtm;//time when the last ping is sent
 	time_t _quitsendtm;//time when the quit msg is sent to the user
+	bool _msg_incomplete;
+	std::string _buffer;
 
 public:
 	const std::string getUser();
@@ -63,6 +65,10 @@ public:
 	void saveQuitSendTime();
 	time_t getQuitSendTime();
 	double timeSinceQuitSend();
+	void setMsgIncomplete(bool status);
+	bool isIncomplete();
+	std::string msgAppend(std::string msg, int last);
+	void clearBuffer();
 	// time_t getPingTime();
 
 	double timeSinceActivity();

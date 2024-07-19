@@ -407,7 +407,20 @@ void IrcServ::recieve_msg()
 	}
 	currentUser->saveLastActivity();
     msg = std::string(buf);
+	if (buf[bytes_recieved - 1] != '\n')
+	{
+		currentUser->setMsgIncomplete(true);
+		currentUser->msgAppend(msg, 0);
+		std::cout << "Received message buffered: " << msg << std::endl;
+		return;
+	}
+	if (currentUser->isIncomplete())
+	{
+		msg = currentUser->msgAppend(msg, 1);
+		currentUser->clearBuffer();
+	}
     std::cout << "Received message: " << msg << std::endl;
+	// std::cout << "test last character: " << (int)buf[bytes_recieved - 1] << " \n ";
    	processMsg(*currentUser, msg);
     	bzero(buf, 512);
 }
@@ -450,7 +463,7 @@ Message IrcServ::processMsg(User &user, std::string msg)
 
     while (std::getline(stream, line))
     {
-        trimMsg(line);
+		trimMsg(line);
         if (line.empty())
             continue;
 
