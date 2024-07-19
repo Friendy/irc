@@ -8,6 +8,7 @@ User::User(int fd) : _fd(fd), _isregistered(false), _passgiven(false), _quitstat
 {
 	_lastactivitytm = time(NULL);
 	_pingsendtm = 0;
+	_quitsendtm = 0;
 }
 
 //Assignment operator:
@@ -19,6 +20,7 @@ User &User::operator=(User const &original)
 		this->_nick = original._nick;
 		this->_lastactivitytm = original._lastactivitytm;
 		this->_pingsendtm = original._pingsendtm;
+		this->_quitsendtm = original._quitsendtm;
 		this->_hostmask = original._hostmask;
 	}
 	return(*this);
@@ -34,6 +36,7 @@ User::User(int fd, const std::string &hostmask) : _fd(fd), _hostmask(hostmask), 
     std::cout << "User created with fd: " << fd << " and hostmask: " << hostmask << std::endl;
 	_lastactivitytm = time(NULL);
 	_pingsendtm = 0;
+	_quitsendtm = 0;
     memset(&_address, 0, sizeof(_address));
 }
 
@@ -172,16 +175,27 @@ time_t User::getPingTime()
 
 double User::timeSinceActivity()
 {
-	time_t curr_time;
-	curr_time = time(NULL);
-	return(difftime(curr_time, _lastactivitytm));
+	return(difftime(time(NULL), _lastactivitytm));
 }
 
 double User::timeSincePing()
 {
-	time_t curr_time;
-	curr_time = time(NULL);
-	return(difftime(curr_time, _pingsendtm));
+	return(difftime(time(NULL), _pingsendtm));
+}
+
+void User::saveQuitSendTime()
+{
+	_quitsendtm = time(NULL);
+}
+
+time_t User::getQuitSendTime()
+{
+	return(_quitsendtm);
+}
+
+double User::timeSinceQuitSend()
+{
+	return(difftime(time(NULL), _quitsendtm));
 }
 
 

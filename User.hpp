@@ -30,6 +30,7 @@ private:
 	std::vector<Channel*> _channels;
 	time_t _lastactivitytm;//time when the last message is recieved
 	time_t _pingsendtm;//time when the last ping is sent
+	time_t _quitsendtm;//time when the quit msg is sent to the user
 
 public:
 	const std::string getUser();
@@ -58,9 +59,15 @@ public:
 	void saveLastActivity();
 	time_t getPingTime();
 	time_t getLastActivity();
-	// time_t getInterval(struct timeval before, struct timeval after);
+
+	void saveQuitSendTime();
+	time_t getQuitSendTime();
+	double timeSinceQuitSend();
+	// time_t getPingTime();
+
 	double timeSinceActivity();
 	double timeSincePing();
+	
 	// Command parseMsg();
 
 	// User();

@@ -430,9 +430,9 @@ void IrcServ::sendQueue()
         else
         {
             std::cout << "Message sent successfully: " << response->getMsg() << std::endl;
-			//if this is a quit message we delete user
-			if (response->isQuitMsg() == 1)
-				delete_user((_users[response->getPollfd()->fd]), "quitted");
+			//if this is a quit message we save its sending time, user will be deleted after timeout
+			if (response->isQuitMsg() == WAIT)
+				_users[response->getPollfd()->fd]->saveQuitSendTime();
 			//in case of ping save ping send time
 			if (response->isPing() == 1)
 				_users[response->getPollfd()->fd]->saveLastPing();
@@ -603,6 +603,12 @@ void IrcServ::checkActivity()
 	while (it != _users.end())
 	{
 		user = it->second;
+		if (user->getQuitSendTime() > 0 && user->timeSinceQuitSend() > QUITTIMEOUT)
+		{
+			it++;
+			delete_user(user, "quitted");
+			continue;
+		}
 		if (user->getPingTime() > 0 && user->timeSincePing() > PONGTIMEOUT
 			&& user->getLastActivity() < user->getPingTime())
 		{

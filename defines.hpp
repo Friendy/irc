@@ -34,5 +34,6 @@
 //intervals
 # define PINGINERVAL 30
 # define PONGTIMEOUT 35
+# define QUITTIMEOUT 35
 
 #endif
