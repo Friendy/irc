@@ -36,4 +36,6 @@
 # define PONGTIMEOUT 180
 # define QUITTIMEOUT 35
 
+# define MAXMSGSIZE 512
+
 #endif

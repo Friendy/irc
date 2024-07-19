@@ -172,36 +172,7 @@ void IrcServ::server_start(const char* protname, const char* port, const char* h
         }
 		if (!_users.empty())
 			checkActivity();
-		// sleep(3);
     }
-}
-
-void IrcServ::fd_map()
-{
-	int ind = 0;
-	std::cout << "activePoll: "  << _activePoll << "\n";
-	std::cout << "-----fd-----" << "----POLLIN----" << "----POLLOUT----" << "\n";
-	while(ind < _activePoll)
-	{
-		std::cout  << "    " << _userPoll[ind].fd << "             "<<(_userPoll[ind].revents & POLLIN) << "        "<< (_userPoll[ind].revents & POLLOUT) << "\n";
-		ind++;
-	}
-}
-
-void IrcServ::Qmap()
-{
-	int ind = 0;
-	Message msg;
-
-	if (_msgQ.empty())
-	{
-		std::cout  << "empty\n";
-		return;
-	}
-	msg = _msgQ.front();
-	std::cout  << "next: fd - " << msg.getPollfd()->fd << " msg - "<< msg.getMsg() << "\n";
-	msg = _msgQ.back();
-	std::cout  << "last: fd - " << msg.getPollfd()->fd << " msg - "<< msg.getMsg() << "\n";
 }
 
 /* checks if the first message of the send queue can be send or
@@ -392,22 +363,24 @@ creates response and pushes it to the sending queue.
 */
 void IrcServ::recieve_msg()
 {
-    char buf[512];
-    bzero(buf, 512);
+    char buf[MAXMSGSIZE + 1];
+    bzero(buf, MAXMSGSIZE + 1);
     std::string msg;
     User *currentUser;
 	ssize_t bytes_recieved;
 
     currentUser = _users[_curRecvFd];
-    bytes_recieved = recv(_curRecvFd, buf, 512, 0);
+    bytes_recieved = recv(_curRecvFd, buf, MAXMSGSIZE, 0);
 	if (bytes_recieved == 0)
     {
 		delete_user(currentUser, "disconnected");
 		return;
 	}
+	if (bytes_recieved == MAXMSGSIZE && buf[MAXMSGSIZE - 1] != '\n')
+		discard();
 	currentUser->saveLastActivity();
     msg = std::string(buf);
-	if (buf[bytes_recieved - 1] != '\n')
+	if (bytes_recieved < MAXMSGSIZE && buf[bytes_recieved - 1] != '\n')
 	{
 		currentUser->setMsgIncomplete(true);
 		currentUser->msgAppend(msg, 0);
@@ -420,9 +393,8 @@ void IrcServ::recieve_msg()
 		currentUser->clearBuffer();
 	}
     std::cout << "Received message: " << msg << std::endl;
-	// std::cout << "test last character: " << (int)buf[bytes_recieved - 1] << " \n ";
    	processMsg(*currentUser, msg);
-    	bzero(buf, 512);
+    	bzero(buf, MAXMSGSIZE + 1);
 }
 
 // sends the first mesage from the send queue
@@ -466,8 +438,6 @@ Message IrcServ::processMsg(User &user, std::string msg)
 		trimMsg(line);
         if (line.empty())
             continue;
-
-        user.setLastMsg(line);
         Command com = parseMsg(line);
         std::cout << "Command received: " << com.getCommand() << " with parameters: ";
         for (size_t i = 0; i < com.getParams().size(); ++i)
@@ -583,7 +553,7 @@ std::string IrcServ::fNick(std::vector<std::string> params, User &user)
 	if (oldnick != "")
 		return(buildNotice("Your nick has been changed", 0));
 	else
-		return(buildNotice("Now for the last step, add username: USER <username> 0 * <:realname>", 0));
+		return(buildNotice("Now for the last step, add username: USER <username>", 0));
 }
 
 std::string IrcServ::fUser(std::vector<std::string> params, User &user)
@@ -601,7 +571,7 @@ std::string IrcServ::fUser(std::vector<std::string> params, User &user)
 	return(welcome(user));
 }
 
-std::string IrcServ::fPing(std::vector<std::string> params, User &user)
+std::string IrcServ::fPing(std::vector<std::string>, User &)
 {
 	return("PONG irc.server.com");
 }
@@ -747,24 +717,17 @@ std::string IrcServ::fPriv(std::vector<std::string> params, User &user) {
 
 std::string IrcServ::fUnknown(std::vector<std::string> params, User &user)
 {
+	if (!user.isRegistered())
+		return("");
 	std::string str("421 ERR_UNKNOWNCOMMAND ");
 	str.append(params[0]);
 	return(str);
 }
 
-std::string IrcServ::fQuit(std::vector<std::string> params, User &user)
+std::string IrcServ::fQuit(std::vector<std::string>, User &user)
 {
 	return(buildQuit(user));
 }
-
-
-/* ******Time related functions****** */
-// void IrcServ::saveTime()
-// {
-// 	_savedTime.
-// }
-// struct tm IrcServ::getTime();
-
 
 /* ******Helper functions****** */
 void IrcServ::create_hint(struct addrinfo *hint)
@@ -837,7 +800,6 @@ pollfd* IrcServ::getPollfd(std::string nick) {
     return &_userPoll[user->getPollInd()];
 }
 
-
 pollfd *IrcServ::getFirstSend()
 {
 
@@ -850,6 +812,22 @@ pollfd *IrcServ::getFirstSend()
 		return(_msgQ.front().getPollfd());
 	else
 		return(NULL);
+}
+
+//recieve and discard the excessive part of the message
+void IrcServ::discard()
+{
+	char buf[MAXMSGSIZE + 1];
+	bzero(buf, MAXMSGSIZE + 1);
+	ssize_t bytes_recieved;
+	char last = 'k';
+	while (last != '\n')
+	{
+		bytes_recieved = recv(_curRecvFd, buf, MAXMSGSIZE, 0);
+		if (bytes_recieved <= 0)
+			return;
+		last = buf[bytes_recieved - 1];
+	}
 }
 
 /*DESTRUCTOR*/

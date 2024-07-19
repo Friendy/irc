@@ -17,7 +17,6 @@ class User {
 private:
 	std::string _user;
 	std::string _nick;
-	std::string _last_msg; //last recieved message
 	const int _fd;
 	std::string _hostmask;
 	struct sockaddr _addr;
@@ -36,7 +35,6 @@ private:
 
 public:
 	const std::string getUser();
-	const std::string getLastMsg();
 	void setUser(std::string user);
 	void setAddress(struct sockaddr_in addr);
 	void setPollInd(int i);
@@ -49,7 +47,6 @@ public:
 	int getPollInd();
 	pollfd *getPollfd();
 	// const std::string getMsg(std::string msg);
-	void setLastMsg(std::string msg);
 	void registerUser();
 	bool isRegistered();
 	bool passGiven();

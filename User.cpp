@@ -107,16 +107,6 @@ void User::setPollPtr(pollfd *pfd)
 	_fdPtr = pfd;
 }
 
-const std::string User::getLastMsg()
-{
-	return(this->_last_msg);
-}
-
-void User::setLastMsg(std::string msg)
-{
-	_last_msg = msg;
-}
-
 void User::registerUser()
 {
 	_isregistered = true;

@@ -34,10 +34,6 @@
 class IrcServ {
 
 private:
-	/* For now each user is a connection
-	and this connection's fd is used as a unique key
-	in case it's not possible another unique key will be introduced
-	 */
 	std::map<const int, User *> _users;
 	std::map<const std::string, std::string (IrcServ::*)(std::vector<std::string> params, User &user)> _commands;
 	std::map<const std::string, int> _nicks;
@@ -52,14 +48,8 @@ private:
 	std::queue<int> _actionQ;
 	nfds_t 	_startInd;
 	nfds_t 	_curRecvFd;
-	struct tm _savedTime;
-
-
-
 	//TODO: update introductory message: should contain:
-	//TODO: user count, sever name and version
-	//TODO: nick history
-	//TODO PING nick
+	//TODO: user count, server name and version
 
 	/* 
 What needs to be done
@@ -132,11 +122,11 @@ What needs to be done
 	bool readyToAction(int action);
 	void setRecvFd();
 	void checkActivity();
+	// ssize_t getMsgSize();
+	void discard();
 
 public:
 	void recieve_msg();
-	void fd_map();//test function will be deleted in final version
-	void Qmap();//test function will be deleted in final version
 
 	/* ******Connection related functions********** */
 	void server_start(const char* protname, const char* port, const char* hostname);
