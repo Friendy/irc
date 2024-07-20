@@ -74,6 +74,13 @@ void IrcServ::accept_client() {
     struct sockaddr_in dest_addr;
     socklen_t dest_len = sizeof(dest_addr);
     char host[INET_ADDRSTRLEN];
+
+    int pollReturn = poll(_userPoll, _activePoll, 5000);
+    if (pollReturn == -1) {
+        Err::handler(1, "poll error", "");
+        return;
+    }
+
     fd = accept(_listenfd, (struct sockaddr *)&dest_addr, &dest_len);
     if (fd == -1) {
         if (errno != EAGAIN && errno != EWOULDBLOCK) {
@@ -89,11 +96,11 @@ void IrcServ::accept_client() {
     _users[fd] = new User(fd, hostmask);
     _users[fd]->setAddress(dest_addr);
     addToPoll(fd);
-	_users[fd]->setPollInd(_activePoll - 1);
-	_users[fd]->setPollPtr(&_userPoll[_activePoll - 1]);
+    _users[fd]->setPollInd(_activePoll - 1);
+    _users[fd]->setPollPtr(&_userPoll[_activePoll - 1]);
 
-	Message response(buildNotice("Please provide the password: PASS <password>", 0), &_userPoll[_activePoll - 1]);
-	_msgQ.push(response);
+    Message response(buildNotice("Please provide the password: PASS <password>", 0), &_userPoll[_activePoll - 1]);
+    _msgQ.push(response);
 
     std::cout << "Client connected" << std::endl;
 }
@@ -328,44 +335,62 @@ void IrcServ::setRecvFd()
 	_curRecvFd = 0;
 }
 
-void IrcServ::recieve_msg()
-{
+void IrcServ::recieve_msg() {
     char buf[512];
     bzero(buf, 512);
     std::string msg;
     User *currentUser;
 
+
+    int pollReturn = poll(_userPoll, _activePoll, 5000);
+    if (pollReturn == -1) {
+        Err::handler(1, "poll error", "");
+        return;
+    }
+
     currentUser = _users[_curRecvFd];
-    recv(_curRecvFd, buf, 512, 0);
+    ssize_t bytesReceived = recv(_curRecvFd, buf, 512, 0);
+    if (bytesReceived == -1) {
+        if (errno != EAGAIN && errno != EWOULDBLOCK) {
+            Err::handler(1, "recv error", strerror(errno));
+        }
+        return;
+    }
     msg = std::string(buf);
     std::cout << "Received message: " << msg << std::endl;
-   	processMsg(*currentUser, msg);
+    processMsg(*currentUser, msg);
     bzero(buf, 512);
-    if (currentUser->hasquitted())
+    if (currentUser->hasquitted()) {
         delete_user(currentUser);
-}
-
-void IrcServ::sendQueue()
-{
-    std::cout << "sendQueue called" << std::endl;
-    if (!_msgQ.empty())
-    {
-        Message *response = &_msgQ.front();
-        std::cout << "Processing message: " << response->getMsg() << std::endl;
-        if (response->sendMsg() == 0) // if sending failed, the message is pushed to the queue again
-        {
-            std::cout << "Failed to send message, requeuing: " << response->getMsg() << std::endl;
-            _msgQ.push(*response);
-            _msgQ.pop(); // Pop the current message after pushing the failed one back to the queue
-        }
-        else
-        {
-            std::cout << "Message sent successfully: " << response->getMsg() << std::endl;
-            _msgQ.pop(); // Pop the message from the queue after successful sending
-        }
     }
 }
 
+void IrcServ::sendQueue() {
+    std::cout << "sendQueue called" << std::endl;
+    if (!_msgQ.empty()) {
+        Message *response = &_msgQ.front();
+
+        int pollReturn = poll(_userPoll, _activePoll, 5000);
+        if (pollReturn == -1) {
+            Err::handler(1, "poll error", "");
+            return;
+        }
+
+        std::cout << "Processing message: " << response->getMsg() << std::endl;
+        ssize_t bytesSent = response->sendMsg();
+        if (bytesSent == -1) {
+            if (errno != EAGAIN && errno != EWOULDBLOCK) {
+                std::cout << "Failed to send message, requeuing: " << response->getMsg() << std::endl;
+                _msgQ.push(*response);
+                _msgQ.pop();
+            }
+            return;
+        } else {
+            std::cout << "Message sent successfully: " << response->getMsg() << std::endl;
+            _msgQ.pop();
+        }
+    }
+}
 
 
 Message IrcServ::processMsg(User &user, std::string msg)
