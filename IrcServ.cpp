@@ -16,7 +16,6 @@ IrcServ::IrcServ(std::string pass) : _server_name("irc.server.com")
 	_commands["USER"] = &IrcServ::fUser;
 	_commands["NICK"] = &IrcServ::fNick;
 	_commands["PING"] = &IrcServ::fPing;
-	// _commands["PONG"] = &IrcServ::fPong;
 	_commands["QUIT"] = &IrcServ::fQuit;
 	_commands["MODE"] = &IrcServ::fMode;
 	_commands["PRIVMSG"] = &IrcServ::fPriv;
@@ -537,6 +536,7 @@ std::string IrcServ::fPass(std::vector<std::string> params, User &user)
 std::string IrcServ::fNick(std::vector<std::string> params, User &user)
 {
 	std::string oldnick;
+	nfds_t nickfd;
 
 	oldnick = user.getNick();
 	if (params.empty())
@@ -545,6 +545,9 @@ std::string IrcServ::fNick(std::vector<std::string> params, User &user)
 		return(buildNotice("Please provide the password first: PASS <password>", 0));
 	if (!check_nick(params[0]))
 		return(buildNotice("Erroneous nickname", ERR_ERRONEUSNICKNAME));
+	nickfd = _nicks[params[0]];
+	if (oldnick != "" && user.getFd() == nickfd)
+		_nicks.erase(params[0]);
 	if (_nicks.find(params[0]) != _nicks.end())
 		return(buildNotice("Nickname is already in use!", ERR_NICKNAMEINUSE));
 	else
@@ -609,7 +612,7 @@ void IrcServ::checkActivity()
 			Message msg(buildPing(*user), user->getPollfd());
 			msg.setPing();
 			_msgQ.push(msg);
-			std::cout << msg.getMsg() << "message added to message queue" << std::endl;
+			std::cout << msg.getMsg() << " message added to message queue" << std::endl;
 		}
 		it++;
 	}
@@ -715,8 +718,12 @@ std::string IrcServ::fPriv(std::vector<std::string> params, User &user) {
 
 std::string IrcServ::fUnknown(std::vector<std::string> params, User &user)
 {
+	if (!user.isRegistered() && !user.passGiven())
+		return(buildNotice("Please provide the password first: PASS <password>", 0));
+	if (!user.isRegistered() && (user.getNick().size() == 0))
+		return(buildNotice("Please provide your nick first: NICK <nick>.", 0));
 	if (!user.isRegistered())
-		return("");
+		return(buildNotice("Finish your registration by providing your username: USER <username>", 0));
 	std::string str("421 ERR_UNKNOWNCOMMAND ");
 	str.append(params[0]);
 	return(str);
