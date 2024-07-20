@@ -98,6 +98,7 @@ What needs to be done
 	std::string buildPriv(const std::string msg, std::string from, std::string to);
 	std::string welcome(User user);
 	std::string buildNotice(const std::string msg, int code);
+	std::string buildNoticetest(const std::string msg, int code, User &user, std::string channelName);
 
 	/* ******General message processing functions********** */
 	// std::string processMsg(User &user, std::string msg);
@@ -116,7 +117,10 @@ What needs to be done
 	std::string fUnknown(std::vector<std::string> params, User &user);
 	std::string fjoin(std::vector<std::string> params, User &user);
 	std::string fMode(std::vector<std::string> params, User &user);
-
+	std::string fPart(std::vector<std::string> params, User &user);
+	std::string fKick(std::vector<std::string> params, User &user);
+	std::string fTopic(std::vector<std::string> params, User &user);
+	std::string fInvite(std::vector<std::string> params, User &user);
 	/* ******Helper functions****** */
 	void create_hint(struct addrinfo *hint);
 	void trimMsg(std::string &msg);
@@ -130,6 +134,9 @@ What needs to be done
 
 public:
 	void recieve_msg();
+	void sendToChannel(std::map<User, std::string>* resp, const Channel& channel, const std::string& message, User &user);
+	void addResponse(std::map<User, std::string>* resp, const User& receiver, const std::string& respMessage);
+	std::string listChannelUsers(const std::string &channelName);
 
 	/* ******Connection related functions********** */
 	void server_start(const char* protname, const char* port, const char* hostname);

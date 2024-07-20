@@ -21,6 +21,9 @@ IrcServ::IrcServ(std::string pass) : _server_name("irc.server.com")
 	_commands["PRIVMSG"] = &IrcServ::fPriv;
 	_commands["UNKNOWN"] = &IrcServ::fUnknown;
 	_commands["JOIN"] = &IrcServ::fjoin;
+    _commands["KICK"] = &IrcServ::fKick;
+    _commands["TOPIC"] = &IrcServ::fTopic;
+    _commands["INVITE"] = &IrcServ::fInvite;
 	_codes[RPL_WELCOME] = "RPL_WELCOME";
 	_codes[ERR_UNKNOWNCOMMAND] = "ERR_UNKNOWNCOMMAND";
 	_codes[ERR_ALREADYREGISTRED] = "ERR_ALREADYREGISTRED";
@@ -30,6 +33,7 @@ IrcServ::IrcServ(std::string pass) : _server_name("irc.server.com")
 	_codes[ERR_CHANOPRIVSNEEDED] = "ERR_CHANOPRIVSNEEDED";
 	_codes[ERR_NOSUCHNICK] = "ERR_NOSUCHNICK";
 	_codes[ERR_BADCHANNELKEY] = "ERR_BADCHANNELKEY";
+    _codes[ERR_NOTONCHANNEL] = "ERR_NOTONCHANNEL";
 }
 
 //Assignment operator:
@@ -246,7 +250,7 @@ std::string IrcServ::buildNotice(const std::string msg, int code)
 	std::stringstream ss;
 	std::string new_msg;
 
-	ss << ":" << _server_name << " NOTICE";
+	ss << ":" << _server_name;
 	if (code != 0)
 		ss << " " << code  << " " << _codes[code];
 	if (msg != "")
@@ -254,6 +258,7 @@ std::string IrcServ::buildNotice(const std::string msg, int code)
 	std::getline(ss, new_msg);
 	return (new_msg);
 }
+
 
 std::string IrcServ::welcome(User user)
 {
@@ -362,6 +367,7 @@ void IrcServ::sendQueue()
 }
 
 
+
 Message IrcServ::processMsg(User &user, std::string msg)
 {
     Message response("");
@@ -397,14 +403,6 @@ Message IrcServ::processMsg(User &user, std::string msg)
             std::cout << "NOTICE command received: " << line << std::endl;
             break;
         }
-        if (com.getCommand() == "JOIN")
-        {
-            std::cout << "JOIN command received: " << line << std::endl;
-            response = fjoin(com.getParams(), user);
-            std::cout << "JOIN command processed: " << response.getMsg() << std::endl;
-			break;
-        }
-
         if (com.getCommand() == "PRIVMSG")
         {
             std::string privResponse = fPriv(com.getParams(), user);
@@ -417,7 +415,6 @@ Message IrcServ::processMsg(User &user, std::string msg)
         {
             response.addFd(&_userPoll[user.getPollInd()]);
         }
-
         if (_commands.find(com.getCommand()) == _commands.end())
             com.replaceCommand("UNKNOWN");
 
@@ -509,6 +506,23 @@ void IrcServ::check_user()
 
 }
 
+std::string IrcServ::listChannelUsers(const std::string &channelName) {
+    if (_channels.find(channelName) == _channels.end()) {
+        return "Channel not found";
+    }
+
+    Channel* channel = _channels[channelName];
+    std::map<int, User*> users = channel->getUsers();
+    std::string userList = "Users in channel " + channelName + ":\n";
+
+    for (std::map<int, User*>::iterator it = users.begin(); it != users.end(); ++it) {
+        userList += it->second->getNick() + "\n";
+    }
+
+    return userList;
+}
+
+
 std::string IrcServ::fjoin(std::vector<std::string> params, User &user) {
     if (!user.isRegistered()) {
         return buildNotice("You are not registered to join", ERR_NOTREGISTERED);
@@ -535,21 +549,26 @@ std::string IrcServ::fjoin(std::vector<std::string> params, User &user) {
         channel = _channels[channelName];
 
         if (channel->isInviteOnly() && !channel->isOperator(user)) {
-            return buildNotice("Cannot join channel, invite only", ERR_CHANOPRIVSNEEDED);
+            if (!channel->isInvited(user)) { // Kullanıcı davet edilmemişse
+                return (":" + _server_name + " " + "473" + " " + user.getNick() + " " + channelName + " " + ":Cannot join channel, invite only (and you haven't been invited)");
+            }
+            channel->removeInvite(user); 
         }
-
         if (channel->getPassword() != "" && (params.size() < 2 || channel->getPassword() != params[1])) {
-            return buildNotice("Invalid channel key", ERR_BADCHANNELKEY);
+            std::string userList = listChannelUsers(channelName);
+            std::cout << userList << std::endl;
+            return (":" + _server_name + " " + "475" + " " + user.getNick() + " " + channelName + " " + ":Cannot join channel, invalid key");
         }
 
         if (channel->getUserLimit() > 0 && channel->getUsers().size() >= channel->getUserLimit()) {
-            return buildNotice("Channel is full", ERR_NEEDMOREPARAMS);
+            return (":" + _server_name + " " + "471" + " " + user.getNick() + " " + channelName + " " + ":Channel is full");
         }
 
         channel->addUser(user);
         responseMessage = "Joined channel " + channelName;
     }
-
+    std::string userList = listChannelUsers(channelName);
+    std::cout << userList << std::endl; 
     // Notify other users in the channel about the new user
     std::map<int, User*> users = channel->getUsers();
     for (std::map<int, User*>::iterator it = users.begin(); it != users.end(); ++it) {
@@ -564,6 +583,16 @@ std::string IrcServ::fjoin(std::vector<std::string> params, User &user) {
         std::string channelInfo = buildPriv("Channel info updated", user.getFullName(), channelName);
         _msgQ.push(Message(channelInfo, it->second->getPollfd()));
     }
+
+    std::string topicMessage;
+    std::string currentTopic = channel->getTopic();
+    if (currentTopic.empty()) {
+        topicMessage = buildPriv("No topic is set", channelName, channelName);
+    } else {
+        topicMessage = ":" + _server_name + " 332 " + user.getNick() + " " + channelName + " :" + currentTopic;
+    }
+    _msgQ.push(Message(topicMessage, user.getPollfd()));
+
 
     return buildNotice(responseMessage, 0);
 }
@@ -613,7 +642,144 @@ std::string IrcServ::fPriv(std::vector<std::string> params, User &user) {
 }
 
 
+void IrcServ::sendToChannel(std::map<User, std::string>* resp, const Channel& channel, const std::string& message, User &user) {
+    std::map<int, User*> users = channel.getUsers();
+    std::map<int, User*>::const_iterator it = users.begin();
 
+    while (it != users.end()) {
+        if (it->second->getFd() != user.getFd()) {
+            _msgQ.push(Message(message, it->second->getPollfd()));
+        }
+        it++;
+    }
+}
+
+std::string IrcServ::fKick(std::vector<std::string> params, User &user) {
+    if (params.size() < 2) {
+        return (":" + _server_name + " " + "461" + " " + user.getNick() + " " + "KICK" + " " + ":Not all parameters were provided");
+    }
+
+    std::string channelName = params[0];
+    std::string targetNick = params[1];
+    std::string kickMessage = (params.size() > 2) ? params[2] : user.getNick();
+
+    if (_channels.find(channelName) == _channels.end()) {
+        return (":" + _server_name + " " + "403" + " " + user.getNick() + " " + channelName + " " + ":No such channel");
+    }
+
+    Channel* channel = _channels[channelName];
+
+    if (!channel->isOperator(user)) {
+        return buildPriv(":" + _server_name + " " + "482" + " " + user.getNick() + " " + channelName + " " + "You're not channel operator", channelName, channelName);
+    }
+
+    User* targetUser = NULL;
+    for (std::map<int, User*>::iterator it = _users.begin(); it != _users.end(); ++it) {
+        if (it->second->getNick() == targetNick) {
+            targetUser = it->second;
+            break;
+        }
+    }
+
+    if (!targetUser) {
+        return buildPriv(":" + _server_name + " " + "461" + " " + user.getNick() + " " + targetNick + " " + "No such nick", channelName, channelName);
+    }
+
+    if (!channel->isUserInChannel(*targetUser)) {
+        return buildPriv(":" + _server_name + " " + "461" + " " + user.getNick() + " " + targetNick + " " + "No such nick", channelName, channelName);
+    }
+
+    std::string fullMessage = ":" + user.getNick() + "!" + user.getUser() + "@" + user.getHostmask() + " KICK " + channelName + " " + targetNick;
+    if (!kickMessage.empty()) {
+        fullMessage += " :" + kickMessage;
+    }
+
+    sendToChannel(NULL, *channel, fullMessage, user);
+    channel->removeUser(*targetUser);
+
+    if (channel->getUsers().empty()) {
+        _channels.erase(channelName);
+        delete channel;
+    }
+
+    return fullMessage;
+}
+
+
+std::string IrcServ::fTopic(std::vector<std::string> params, User &user) {
+    if (params.empty()) {
+        return  ":" + _server_name + " 461 " + user.getNick() + " " +  "TOPIC" + " :Not all parameters were provided";;
+    }
+
+    std::string channelName = params[0];
+    std::string newTopic = (params.size() > 1) ? params[1] : "";
+
+    if (_channels.find(channelName) == _channels.end()) {
+        return ":" + _server_name + " " + "403" + " " + user.getNick() + " " + channelName + " " + ":No such channel";
+    }
+
+    Channel* channel = _channels[channelName];
+
+    if (!channel->isUserInChannel(user)) {
+        return buildNotice("You're not on that channel", ERR_NOTONCHANNEL);
+    }
+
+    if (newTopic.empty()) {
+        // Display the current topic
+        std::string currentTopic = channel->getTopic();
+        if (currentTopic.empty()) {
+            return ":" + _server_name + " 331 " + user.getNick() + " " + channelName + " :No topic is set";
+        } else {
+            return ":" + _server_name + " 332 " + user.getNick() + " " + channelName + " :" + currentTopic;
+        }
+    } else {
+        // Set a new topic
+        if (!channel->isOperator(user)) {
+            if (channel->isTopicRestrict() == false) {
+                return buildNotice("You're not channel operator", ERR_CHANOPRIVSNEEDED);
+            }
+        }
+
+        channel->setTopic(newTopic);
+
+        std::string fullMessage = ":" + user.getNick() + "!" + user.getUser() + "@" + user.getHostmask() + " TOPIC " + channelName + " :" + newTopic;
+        sendToChannel(NULL, *channel, fullMessage, user);
+
+        return fullMessage;
+    }
+}
+
+std::string IrcServ::fInvite(std::vector<std::string> params, User &user) {
+    std::cout << " 2 " << std::endl;
+    if (params.size() < 2 && params.size() > 2){
+        return ":" + _server_name + " " + "461" + " " + user.getNick() + " " + "INVITE" + " " + ":Wrong number of params";
+    }
+    std::cout << " 3333 " << std::endl;
+    std::string nick = params[0];
+    std::string channelName = params[1];
+
+    if (_channels.find(channelName) == _channels.end()) {
+        return ":" + _server_name + " " + "403" + " " + user.getNick() + " " + channelName + " " + ":No such channel";
+    }
+    Channel* channel = _channels[channelName];
+
+    if (!channel->isOperator(user)) {
+        return  buildPriv(":" + _server_name + " " + "482" + " " + user.getNick() + " " + channelName + " " + "You're not channel operator", channelName, channelName);
+    }
+
+
+    if (_nicks.find(nick) == _nicks.end()) {
+        return buildPriv(":" + _server_name + " " + "461" + " " + user.getNick() + " " + nick + " " + "No such nick", channelName, channelName);
+    }
+
+    User* invitedUser = _users[_nicks[nick]];
+    channel->addInvite(*invitedUser);
+
+    std::string inviteMsg = ":" + user.getNick() + "!" + user.getUser() + "@" + user.getHost() + " INVITE " + nick + " :" + channelName;
+    _msgQ.push(Message(inviteMsg, invitedUser->getPollfd()));
+
+    return inviteMsg;
+}
 
 
 std::string IrcServ::fUnknown(std::vector<std::string> params, User &user)
