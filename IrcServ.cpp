@@ -235,16 +235,18 @@ int IrcServ::getAction()
 //deletes user from the server(after disconnecting it)
 void IrcServ::delete_user(User *user, std::string reason)
 {
-    int fd = user->getFd();
+    if (user == NULL)
+		return;
+	int fd = user->getFd();
     int pollIndex = user->getPollInd();
 
-    for (nfds_t i = pollIndex; i < _activePoll - 1; ++i) {
-        _userPoll[i] = _userPoll[i + 1];
-        if (_users[_userPoll[i].fd]) {
-            _users[_userPoll[i].fd]->setPollInd(i);
-        }
-    }
-    --_activePoll;
+    // for (nfds_t i = pollIndex; i < _activePoll - 1; ++i) {
+    //     _userPoll[i] = _userPoll[i + 1];
+    //     if (_users[_userPoll[i].fd]) {
+    //         _users[_userPoll[i].fd]->setPollInd(i);
+    //     }
+    // }
+    // --_activePoll;
 
 	close(fd);
     _nicks.erase(user->getNick());
@@ -469,13 +471,6 @@ Message IrcServ::processMsg(User &user, std::string msg)
             std::cout << "NOTICE command received: " << line << std::endl;
             break;
         }
-        if (com.getCommand() == "JOIN")
-        {
-            std::cout << "JOIN command received: " << line << std::endl;
-            response = fjoin(com.getParams(), user);
-            std::cout << "JOIN command processed: " << response.getMsg() << std::endl;
-			break;
-        }
 		if (com.getCommand() == "PONG")
 		{
 			std::cout << "PONG command received: " << line << std::endl;
@@ -631,6 +626,8 @@ void IrcServ::checkActivity()
 	while (it != _users.end())
 	{
 		user = it->second;
+		if (user == NULL)
+			return;
 		if (user->getQuitSendTime() > 0 && user->timeSinceQuitSend() > QUITTIMEOUT)
 		{
 			it++;
@@ -648,6 +645,11 @@ void IrcServ::checkActivity()
 		else if (user->timeSinceActivity() > PINGINERVAL
 			&& (user->getPingTime() == 0 || user->timeSincePing() > PONGTIMEOUT))
 		{
+			std::cout << " t" << user->timeSincePing() << std::endl;
+			std::cout << "ping time" << user->getPingTime() << std::endl;
+			std::cout << "activity time" << user->getLastActivity() << std::endl;
+			std::cout << "since last activity" << user->timeSinceActivity() << std::endl;
+			std::cout << "time since ping" << user->timeSincePing() << std::endl;
 			Message msg(buildPing(*user), user->getPollfd());
 			msg.setPing();
 			_msgQ.push(msg);
@@ -683,7 +685,7 @@ std::string IrcServ::fjoin(std::vector<std::string> params, User &user) {
         channel = _channels[channelName];
 
         if (channel->isInviteOnly() && !channel->isOperator(user)) {
-            if (!channel->isInvited(user)) { // Kullanıcı davet edilmemişse
+            if (!channel->isInvited(user)) { 
                 return (":" + _server_name + " " + "473" + " " + user.getNick() + " " + channelName + " " + ":Cannot join channel, invite only (and you haven't been invited)");
             }
             channel->removeInvite(user); 

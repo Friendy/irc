@@ -6,12 +6,13 @@
 #    By: mrubina <mrubina@student.42heilbronn.de    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/11/12 18:35:29 by mrubina           #+#    #+#              #
-#    Updated: 2024/07/10 16:59:11 by mrubina          ###   ########.fr        #
+#    Updated: 2024/07/20 21:49:03 by mrubina          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
-CXXFLAGS = -std=c++98 
+CXXFLAGS = -std=c++98 -fsanitize=address
 # -Wall -Werror -Wextra
+# -fsanitize=address
 
 SRC = main.cpp IrcServ.cpp Err.cpp User.cpp Channel.cpp Command.cpp Message.cpp Mode.cpp
 OBJ = $(SRC:.cpp=.o)

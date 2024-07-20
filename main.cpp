@@ -6,7 +6,7 @@
 /*   By: mrubina <mrubina@student.42heilbronn.de    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/15 17:28:20 by mrubina           #+#    #+#             */
-/*   Updated: 2024/06/30 22:21:42 by mrubina          ###   ########.fr       */
+/*   Updated: 2024/07/20 21:45:03 by mrubina          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,7 +27,6 @@ void sig_handler(int)
 	std::cout << "quitting\n";
 	_exit(0);
 }
-
 
 int main(int argc, char *argv[])
 {
