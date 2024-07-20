@@ -536,7 +536,7 @@ std::string IrcServ::fPass(std::vector<std::string> params, User &user)
 std::string IrcServ::fNick(std::vector<std::string> params, User &user)
 {
 	std::string oldnick;
-	nfds_t nickfd;
+	nfds_t nickfd = 0;
 
 	oldnick = user.getNick();
 	if (params.empty())
@@ -545,16 +545,16 @@ std::string IrcServ::fNick(std::vector<std::string> params, User &user)
 		return(buildNotice("Please provide the password first: PASS <password>", 0));
 	if (!check_nick(params[0]))
 		return(buildNotice("Erroneous nickname", ERR_ERRONEUSNICKNAME));
-	nickfd = _nicks[params[0]];
-	if (oldnick != "" && user.getFd() == nickfd)
-		_nicks.erase(params[0]);
 	if (_nicks.find(params[0]) != _nicks.end())
-		return(buildNotice("Nickname is already in use!", ERR_NICKNAMEINUSE));
-	else
 	{
-		user.setNick(params[0]);
-		_nicks[params[0]] = user.getFd();
+		nickfd = _nicks[params[0]];
+		if (nickfd != 0 && user.getFd() != nickfd)
+			return(buildNotice("Nickname is already in use!", ERR_NICKNAMEINUSE));
 	}
+	if (oldnick != "")
+		_nicks.erase(oldnick);
+	user.setNick(params[0]);
+	_nicks[params[0]] = user.getFd();
 	if (oldnick != "")
 		return(buildNotice("Your nick has been changed", 0));
 	else
