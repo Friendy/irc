@@ -76,12 +76,6 @@ void IrcServ::accept_client() {
     socklen_t dest_len = sizeof(dest_addr);
     char host[INET_ADDRSTRLEN];
 
-    int pollReturn = poll(_userPoll, _activePoll, 5000);
-    if (pollReturn == -1) {
-        Err::handler(1, "poll error", "");
-        return;
-    }
-
     fd = accept(_listenfd, (struct sockaddr *)&dest_addr, &dest_len);
 	std::cout << "fd: " << fd << std::endl;
     if (fd == -1) {
@@ -99,7 +93,7 @@ void IrcServ::accept_client() {
     _users[fd]->setPollInd(_activePoll - 1);
     _users[fd]->setPollPtr(&_userPoll[_activePoll - 1]);
 
-    Message response(buildNotice("Please provide the password: PASS <password>", 0), &_userPoll[_activePoll - 1]);
+    Message response(buildNotice("Please provide the password: /quote PASS <password>", 0), &_userPoll[_activePoll - 1]);
     _msgQ.push(response);
 
     std::cout << "Client connected" << std::endl;
@@ -386,14 +380,6 @@ void IrcServ::recieve_msg()
     std::string msg;
     User *currentUser;
 
-
-    int pollReturn = poll(_userPoll, _activePoll, 5000);
-    if (pollReturn == -1) {
-        Err::handler(1, "poll error", "");
-        return;
-    }
-
-
     currentUser = _users[_curRecvFd];
 	ssize_t bytesReceived = recv(_curRecvFd, buf, MAXMSGSIZE, 0);
 	if (bytesReceived <= 0) {
@@ -428,12 +414,6 @@ void IrcServ::sendQueue()
     std::cout << "sendQueue called" << std::endl;
     if (!_msgQ.empty()) {
         Message *response = &_msgQ.front();
-
-        int pollReturn = poll(_userPoll, _activePoll, 5000);
-        if (pollReturn == -1) {
-            Err::handler(1, "poll error", "");
-            return;
-        }
 
         std::cout << "Processing message: " << response->getMsg() << std::endl;
         ssize_t bytesSent = response->sendMsg();
@@ -478,7 +458,7 @@ Message IrcServ::processMsg(User &user, std::string msg)
             std::cout << "CAP command received: " << line << std::endl;
             response.setMsg("CAP * LS :multi-prefix");
             response.addFd(&_userPoll[user.getPollInd()]);
-            _msgQ.push(response);
+            //_msgQ.push(response);
             std::cout << "CAP response added to message queue" << std::endl;
             break;
         }
@@ -529,6 +509,7 @@ Message IrcServ::processMsg(User &user, std::string msg)
 
 
 
+
 bool compare_until_cr(const std::string &a, const std::string &b) {
     size_t i = 0;
     for (; i < b.length(); ++i) {
@@ -542,7 +523,20 @@ bool compare_until_cr(const std::string &a, const std::string &b) {
             return false;
         }
     }
-    std::cout << "End of 'b' reached, all characters matched" << std::endl;
+
+    // Check if 'a' has more characters and if any of those characters is not '\r'
+    if (i < a.length()) {
+        std::cout << "'a' has more characters. Checking for non-CR characters." << std::endl;
+        for (; i < a.length(); ++i) {
+            std::cout << "Checking a[" << i << "] = " << static_cast<int>(a[i]) << std::endl;
+            if (a[i] != '\r') {
+                std::cout << "Non-CR character found in 'a', comparison failed" << std::endl;
+                return false;
+            }
+        }
+    }
+
+    std::cout << "End of 'b' reached, all characters matched or remaining characters in 'a' are CR" << std::endl;
     return true;
 }
 
@@ -556,10 +550,10 @@ std::string IrcServ::fPass(std::vector<std::string> params, User &user)
 	if (compare_until_cr(pass_param, _pass))
 	{
 		user.givePass();
-		return(buildNotice("The password is correct. Now please provide your nick: NICK <nick>.", 0));
+		return(buildNotice("The password is correct. Now please provide your nick: /quote NICK <nick>.", 0));
 	}
 	else
-		return(buildNotice("The password is incorrect. Please try again!", ERR_PASSWDMISMATCH));
+		return( buildNotice(_server_name + " " + "464" + "* :Password incorrect", 0));
 }
 
 std::string IrcServ::fNick(std::vector<std::string> params, User &user)
@@ -571,7 +565,7 @@ std::string IrcServ::fNick(std::vector<std::string> params, User &user)
 	if (params.empty())
 		return(buildNotice("No nickname given", ERR_NONICKNAMEGIVEN));
 	if (!user.passGiven())
-		return(buildNotice("Please provide the password first: PASS <password>", 0));
+		return(buildNotice("Please provide the password first: /quote PASS <password>", 0));
 	if (!check_nick(params[0]))
 		return(buildNotice("Erroneous nickname", ERR_ERRONEUSNICKNAME));
 	if (_nicks.find(params[0]) != _nicks.end())
@@ -587,7 +581,7 @@ std::string IrcServ::fNick(std::vector<std::string> params, User &user)
 	if (oldnick != "")
 		return(buildNotice("Your nick has been changed", 0));
 	else
-		return(buildNotice("Now for the last step, add username: USER <username>", 0));
+		return(buildNotice("Now for the last step, add username: /quote USER <username>", 0));
 }
 
 std::string IrcServ::fUser(std::vector<std::string> params, User &user)
@@ -597,9 +591,9 @@ std::string IrcServ::fUser(std::vector<std::string> params, User &user)
 	if (user.isRegistered())
 		return(buildNotice("You may not reregister", ERR_ALREADYREGISTRED));
 	if (!user.passGiven())
-		return(buildNotice("Please provide the password first: PASS <password>", 0));
+		return(buildNotice("Please provide the password first: /quote PASS <password>", 0));
 	else if (user.getNick() == "")
-		return(buildNotice("Please provide your nick first: NICK <nick>.", 0));
+		return(buildNotice("Please provide your nick first: /quote NICK <nick>.", 0));
 	std::cout << "param " << params[0] << "\n";
 	user.setUser(params[0]);
 	user.registerUser();
