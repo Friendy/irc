@@ -13,6 +13,7 @@ Channel &Channel::operator=(Channel const &original) {
         _userLimit = original._userLimit;
         _inviteOnly = original._inviteOnly;
         _topicRestrict = original._topicRestrict;
+        _invitedUsers = original._invitedUsers;
     }
     return *this;
 }
@@ -45,7 +46,12 @@ void Channel::addUser(User &user) {
 
 void Channel::removeUser(User &user) {
     _users.erase(user.getFd());
+
+    // if (_users.empty()) {
+    //     IrcServ::getInstance().removeChannel(_name);
+    // }
 }
+
 
 bool Channel::isOperator(User &user) const {
     return _operators.find(user.getNick()) != _operators.end();
@@ -83,10 +89,40 @@ bool Channel::isInviteOnly() const {
     return _inviteOnly;
 }
 
+bool Channel::isInvited(User &user) const {
+    return _invitedUsers.find(user.getNick()) != _invitedUsers.end();
+}
+
+void Channel::removeInvite(User &user) {
+    _invitedUsers.erase(user.getNick());
+}
+
+void Channel::addInvite(User &user) {
+    _invitedUsers[user.getNick()] = &user;
+}
+
+
 void Channel::setTopicRestrict(bool restrict) {
     _topicRestrict = restrict;
 }
 
 bool Channel::isTopicRestrict() const {
     return _topicRestrict;
+}
+
+bool Channel::isUserInChannel(const User& user) const {
+    std::map<int, User*>::const_iterator it = _users.find(user.getFd());
+    return it != _users.end();
+}
+
+bool Channel::isEmpty() const {
+    return _users.empty();
+}
+
+const std::string& Channel::getTopic() const {
+    return _topic;
+}
+
+void Channel::setTopic(const std::string& topic) {
+    _topic = topic;
 }

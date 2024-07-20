@@ -82,7 +82,7 @@ const std::string User::getFullName()
 	return(name);
 }
 
-int User::getFd()
+int User::getFd() const
 {
 	return(this->_fd);
 }
@@ -167,7 +167,14 @@ void User::clearBuffer()
 
 void User::joinChannel(Channel *channel) {
     _channels.push_back(channel);
-    // Kanala katılma işlemleri
+}
+
+const std::string User::getName() const {
+    return this->_user;
+}
+
+const std::string User::getHostmask() const {
+    return this->_hostmask;
 }
 
 void User::saveLastActivity()

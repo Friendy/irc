@@ -33,18 +33,28 @@ public:
 
     void setInviteOnly(bool inviteOnly);
     bool isInviteOnly() const;
+    bool isInvited(User &user) const;
+    void removeInvite(User &user);
+    void addInvite(User &user);
 
     void setTopicRestrict(bool restrict);
     bool isTopicRestrict() const;
 
+    bool isUserInChannel(const User& user) const;
+    bool isEmpty() const;
+
+    const std::string& getTopic() const;
+    void setTopic(const std::string& topic);
 private:
     std::string _name;
     std::map<int, User*> _users;
     std::map<std::string, User*> _operators;
+    std::map<std::string, User*> _invitedUsers;
     std::string _password;
     int _userLimit;
     bool _inviteOnly;
     bool _topicRestrict;
+    std::string _topic;
 };
 
 #endif

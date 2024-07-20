@@ -1,7 +1,7 @@
 #include "Message.hpp"
 
 /*CONSTRUCTORS*/
-Message::Message() : _fdPtr(NULL) {};
+Message::Message() : _fdPtr(NULL) {}
 
 Message::Message(std::string msg) : _msg(msg), _fdPtr(NULL), _isquitmsg(EXIST), _isping(0) {};
 
@@ -24,16 +24,14 @@ Message &Message::operator=(Message const &original)
 	return(*this);
 }
 
-Message::Message(Message const &original)
-{
-	*this = original;
+Message::Message(Message const &original) {
+    *this = original;
 }
 
 /*FUNCTIONS*/
 
-const std::string Message::getMsg() const
-{
-	return(this->_msg);
+const std::string Message::getMsg() const {
+    return this->_msg;
 }
 
 void Message::setMsg(std::string msg)
@@ -42,14 +40,12 @@ void Message::setMsg(std::string msg)
 	this->_msg = msg;
 }
 
-void Message::addFd(pollfd *fd)
-{
-	_fdPtr = fd;
+void Message::addFd(pollfd *fd) {
+    _fdPtr = fd;
 }
 
-pollfd *Message::getPollfd() const
-{
-	return(_fdPtr);
+pollfd *Message::getPollfd() const {
+	return _fdPtr;
 }
 
 int Message::isQuitMsg()
@@ -73,69 +69,28 @@ void Message::setPing()
 }
 
 
-//sending a message to one fd
-int Message::sendMsg()
-{
-	if (!_fdPtr)
-    {
+// Sending a message to one fd
+int Message::sendMsg() {
+    if (!_fdPtr) {
         std::cerr << "File descriptor is null" << std::endl;
         return 1;
     }
-	addNewLine();
-	ssize_t bytes_sent = send(_fdPtr->fd, _msg.data(), _msg.length(), 0);
-	if (bytes_sent == -1)
-	{
-		Err::handler(0, "sending message failed: ", _msg);
-		return (0);
-	}
-	else
-		std::cout << "Sent to " << _fdPtr->fd << ": " << _msg;
-	return(1);
+    addNewLine();
+    ssize_t bytes_sent = send(_fdPtr->fd, _msg.c_str(), _msg.length(), 0);
+    if (bytes_sent == -1) {
+        Err::handler(0, "sending message failed: ", _msg);
+        return 0;
+    } else {
+        std::cout << "Sent to " << _fdPtr->fd << ": " << _msg << std::endl;
+    }
+    return 1;
 }
 
-
-
-//sending a message to all fds
-//before sending we check polling result
-// void Message::sendMsg()
-// {
-// 	std::vector<pollfd *>::iterator it;
-// 	std::vector<pollfd *>::iterator save_it;
-// 	if (!_fds.empty())
-// 	{
-// 		for (it = _fds.begin(); it != _fds.end(); ++it)
-// 		{
-// 			if ((*it)->revents & POLLOUT)
-// 			{
-// 				if (sendMsg((*it)->fd) == 1)
-// 				{
-// 					save_it = it;
-// 					it++;
-// 					_fds.erase(save_it);
-// 				}
-// 				if (save_it ==_fds.end()) //this can happen if the last element is deleted
-// 					break;
-// 			}
-// 		}
-// 	}
-// }
-
-void Message::addNewLine()
-{
-	_msg.insert(_msg.end(), '\n');
+void Message::addNewLine() {
+    if (!_msg.empty() && _msg[_msg.size() - 1] != '\n') {
+        _msg.push_back('\n');
+    }
 }
-
-
-
-//sending a message to all fds
-// void Message::sendToAll()
-// {
-// 	ssize_t bytes_sent = send(fd, _msg.data(), _msg.length(), 0);
-// 	if (bytes_sent == -1)
-// 		Err::handler(1, "sending message failed: ", _msg);
-// 	else
-// 		std::cout << "Sent: " << _msg << "\n";
-// }
 
 /*DESTRUCTOR*/
-Message::~Message(){}
+Message::~Message() {}

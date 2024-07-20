@@ -43,7 +43,7 @@ public:
 	const std::string getHost();
 	const std::string getFullName();
 	void setNick(std::string nick);
-	int getFd();
+	int getFd() const;
 	int getPollInd();
 	pollfd *getPollfd();
 	// const std::string getMsg(std::string msg);
@@ -66,12 +66,18 @@ public:
 	bool isIncomplete();
 	std::string msgAppend(std::string msg, int last);
 	void clearBuffer();
-	// time_t getPingTime();
+	time_t getPingTime();
 
 	double timeSinceActivity();
 	double timeSincePing();
 	
+
+	bool operator<(const User& other) const {
+        return this->_fd < other.getFd();
+    }
 	// Command parseMsg();
+    const std::string getName() const;
+    const std::string getHostmask() const;  
 
 	// User();
 	User(int fd);
