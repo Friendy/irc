@@ -234,13 +234,22 @@ int IrcServ::getAction()
 
 void IrcServ::delete_user(User *user)
 {
-	int fd;
+    int fd = user->getFd();
+    int pollIndex = user->getPollInd();
 
-	fd = user->getFd();
-	_nicks.erase(user->getNick());
-	delete(user);
-	_users.erase(fd);
+    for (nfds_t i = pollIndex; i < _activePoll - 1; ++i) {
+        _userPoll[i] = _userPoll[i + 1];
+        if (_users[_userPoll[i].fd]) {
+            _users[_userPoll[i].fd]->setPollInd(i);
+        }
+    }
+    --_activePoll;
+
+    _nicks.erase(user->getNick());
+    delete(user);
+    _users.erase(fd);
 }
+
 
 std::string IrcServ::buildPriv(const std::string msg, std::string from, std::string to)
 {
