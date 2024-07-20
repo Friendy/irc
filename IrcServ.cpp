@@ -85,9 +85,7 @@ void IrcServ::accept_client() {
     fd = accept(_listenfd, (struct sockaddr *)&dest_addr, &dest_len);
 	std::cout << "fd: " << fd << std::endl;
     if (fd == -1) {
-        if (errno != EAGAIN && errno != EWOULDBLOCK) {
-            Err::handler(1, "new socket not created", strerror(errno));
-        }
+        Err::handler(1, "new socket not created", strerror(errno));
         return;
     }
     inet_ntop(AF_INET, &dest_addr.sin_addr, host, INET_ADDRSTRLEN);
@@ -398,18 +396,11 @@ void IrcServ::recieve_msg()
 
     currentUser = _users[_curRecvFd];
 	ssize_t bytesReceived = recv(_curRecvFd, buf, MAXMSGSIZE, 0);
-	if (bytesReceived == -1) {
-        if (errno != EAGAIN && errno != EWOULDBLOCK) {
-            Err::handler(1, "recv error", strerror(errno));
-        }
+	if (bytesReceived <= 0) {
+        std::cout << "Receive error or client disconnected" << std::endl;
+        delete_user(currentUser, "disconnected");
         return;
     }
-
-	if (bytesReceived == 0)
-    {
-		delete_user(currentUser, "disconnected");
-		return;
-	}
 	if (bytesReceived == MAXMSGSIZE && buf[MAXMSGSIZE - 1] != '\n')
 		discard();
 	currentUser->saveLastActivity();
@@ -447,11 +438,9 @@ void IrcServ::sendQueue()
         std::cout << "Processing message: " << response->getMsg() << std::endl;
         ssize_t bytesSent = response->sendMsg();
         if (bytesSent == -1) {
-            if (errno != EAGAIN && errno != EWOULDBLOCK) {
-                std::cout << "Failed to send message, requeuing: " << response->getMsg() << std::endl;
-                _msgQ.push(*response);
-                _msgQ.pop();
-            }
+            std::cout << "Failed to send message, requeuing: " << response->getMsg() << std::endl;
+            _msgQ.push(*response);
+             _msgQ.pop();
             return;
         } else {
             std::cout << "Message sent successfully: " << response->getMsg() << std::endl;
