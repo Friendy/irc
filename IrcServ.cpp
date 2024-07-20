@@ -405,16 +405,16 @@ void IrcServ::recieve_msg()
         return;
     }
 
-	if (bytes_recieved == 0)
+	if (bytesReceived == 0)
     {
 		delete_user(currentUser, "disconnected");
 		return;
 	}
-	if (bytes_recieved == MAXMSGSIZE && buf[MAXMSGSIZE - 1] != '\n')
+	if (bytesReceived == MAXMSGSIZE && buf[MAXMSGSIZE - 1] != '\n')
 		discard();
 	currentUser->saveLastActivity();
     msg = std::string(buf);
-	if (bytes_recieved < MAXMSGSIZE && buf[bytes_recieved - 1] != '\n')
+	if (bytesReceived < MAXMSGSIZE && buf[bytesReceived - 1] != '\n')
 	{
 		currentUser->setMsgIncomplete(true);
 		currentUser->msgAppend(msg, 0);
@@ -1037,14 +1037,14 @@ void IrcServ::discard()
 {
 	char buf[MAXMSGSIZE + 1];
 	bzero(buf, MAXMSGSIZE + 1);
-	ssize_t bytes_recieved;
+	ssize_t bytesReceived;
 	char last = 'k';
 	while (last != '\n')
 	{
-		bytes_recieved = recv(_curRecvFd, buf, MAXMSGSIZE, 0);
-		if (bytes_recieved <= 0)
+		bytesReceived = recv(_curRecvFd, buf, MAXMSGSIZE, 0);
+		if (bytesReceived <= 0)
 			return;
-		last = buf[bytes_recieved - 1];
+		last = buf[bytesReceived - 1];
 	}
 }
 

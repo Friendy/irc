@@ -66,7 +66,6 @@ public:
 	bool isIncomplete();
 	std::string msgAppend(std::string msg, int last);
 	void clearBuffer();
-	time_t getPingTime();
 
 	double timeSinceActivity();
 	double timeSincePing();
