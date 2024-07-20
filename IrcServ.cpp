@@ -24,6 +24,7 @@ IrcServ::IrcServ(std::string pass) : _server_name("irc.server.com")
 	_commands["JOIN"] = &IrcServ::fjoin;
 	_codes[RPL_WELCOME] = "RPL_WELCOME";
 	_codes[ERR_UNKNOWNCOMMAND] = "ERR_UNKNOWNCOMMAND";
+	_codes[ERR_ERRONEUSNICKNAME] = "ERR_ERRONEUSNICKNAME";
 	_codes[ERR_ALREADYREGISTRED] = "ERR_ALREADYREGISTRED";
 	_codes[ERR_NOTREGISTERED] = "ERR_NOTREGISTERED";
 	_codes[ERR_NEEDMOREPARAMS] = "ERR_NEEDMOREPARAMS";
@@ -539,10 +540,11 @@ std::string IrcServ::fNick(std::vector<std::string> params, User &user)
 
 	oldnick = user.getNick();
 	if (params.empty())
-		return(buildNotice("", ERR_NONICKNAMEGIVEN));
+		return(buildNotice("No nickname given", ERR_NONICKNAMEGIVEN));
 	if (!user.passGiven())
 		return(buildNotice("Please provide the password first: PASS <password>", 0));
-	//TODO check if nick characters are all allowed
+	if (!check_nick(params[0]))
+		return(buildNotice("Erroneous nickname", ERR_ERRONEUSNICKNAME));
 	if (_nicks.find(params[0]) != _nicks.end())
 		return(buildNotice("Nickname is already in use!", ERR_NICKNAMEINUSE));
 	else
@@ -558,13 +560,14 @@ std::string IrcServ::fNick(std::vector<std::string> params, User &user)
 
 std::string IrcServ::fUser(std::vector<std::string> params, User &user)
 {
+	if (params.empty())
+		return(buildNotice("Not enough parameters", ERR_NEEDMOREPARAMS));
 	if (user.isRegistered())
 		return(buildNotice("You may not reregister", ERR_ALREADYREGISTRED));
 	if (!user.passGiven())
 		return(buildNotice("Please provide the password first: PASS <password>", 0));
 	else if (user.getNick() == "")
 		return(buildNotice("Please provide your nick first: NICK <nick>.", 0));
-	//TODO add more parameters
 	std::cout << "param " << params[0] << "\n";
 	user.setUser(params[0]);
 	user.registerUser();
@@ -670,11 +673,6 @@ std::string IrcServ::fjoin(std::vector<std::string> params, User &user) {
 
     return buildNotice(responseMessage, 0);
 }
-
-
-
-
-
 
 
 std::string IrcServ::fPriv(std::vector<std::string> params, User &user) {
@@ -828,6 +826,29 @@ void IrcServ::discard()
 			return;
 		last = buf[bytes_recieved - 1];
 	}
+}
+
+bool IrcServ::isspecial(char c)
+{
+	return((c >= 91 && c <= 96) || (c >= 123 && c <= 125));
+}
+
+//check if nick has allowed format
+bool IrcServ::check_nick(std::string nick)
+{
+	bool check;
+	int i = 1;
+
+	if (nick.size() > 9 || !(std::isalpha(nick[0]) || isspecial(nick[0])))
+		return (false);
+	while (i < nick.size())
+	{
+		if (std::isalnum(nick[i]) || isspecial(nick[i]) || nick[i] == '-')
+			i++;
+		else
+			return (false);
+	}
+	return (true);
 }
 
 /*DESTRUCTOR*/

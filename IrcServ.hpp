@@ -124,6 +124,8 @@ What needs to be done
 	void checkActivity();
 	// ssize_t getMsgSize();
 	void discard();
+	bool check_nick(std::string nick);
+	bool isspecial(char c);
 
 public:
 	void recieve_msg();
