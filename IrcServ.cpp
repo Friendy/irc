@@ -176,6 +176,7 @@ void IrcServ::server_start(const char* protname, const char* port, const char* h
 		if (!_users.empty())
 			checkActivity();
     }
+    system("leaks ircserv");
 }
 
 /* checks if the first message of the send queue can be send or
@@ -554,7 +555,7 @@ std::string IrcServ::fPass(std::vector<std::string> params, User &user)
 std::string IrcServ::fNick(std::vector<std::string> params, User &user)
 {
 	std::string oldnick;
-	nfds_t nickfd = 0;
+	int nickfd = 0;
 
 	oldnick = user.getNick();
 	if (params.empty())
@@ -685,7 +686,7 @@ std::string IrcServ::fjoin(std::vector<std::string> params, User &user) {
         channel = _channels[channelName];
 
         if (channel->isInviteOnly() && !channel->isOperator(user)) {
-            if (!channel->isInvited(user)) { 
+            if (!channel->isInvited(user)) {
                 return (":" + _server_name + " " + "473" + " " + user.getNick() + " " + channelName + " " + ":Cannot join channel, invite only (and you haven't been invited)");
             }
             channel->removeInvite(user); 
@@ -696,7 +697,7 @@ std::string IrcServ::fjoin(std::vector<std::string> params, User &user) {
             return (":" + _server_name + " " + "475" + " " + user.getNick() + " " + channelName + " " + ":Cannot join channel, invalid key");
         }
 
-        if (channel->getUserLimit() > 0 && channel->getUsers().size() >= channel->getUserLimit()) {
+        if (channel->getUserLimit() > 0 && channel->getUsers().size() >= static_cast<size_t>(channel->getUserLimit())) {
             return (":" + _server_name + " " + "471" + " " + user.getNick() + " " + channelName + " " + ":Channel is full");
         }
 
@@ -773,7 +774,7 @@ std::string IrcServ::fPriv(std::vector<std::string> params, User &user) {
 }
 
 
-void IrcServ::sendToChannel(std::map<User, std::string>* resp, const Channel& channel, const std::string& message, User &user) {
+void IrcServ::sendToChannel( const Channel& channel, const std::string& message, User &user) {
     std::map<int, User*> users = channel.getUsers();
     std::map<int, User*>::const_iterator it = users.begin();
 
@@ -826,7 +827,7 @@ std::string IrcServ::fKick(std::vector<std::string> params, User &user) {
         fullMessage += " :" + kickMessage;
     }
 
-    sendToChannel(NULL, *channel, fullMessage, user);
+    sendToChannel(*channel, fullMessage, user);
     channel->removeUser(*targetUser);
 
     if (channel->getUsers().empty()) {
@@ -875,7 +876,7 @@ std::string IrcServ::fTopic(std::vector<std::string> params, User &user) {
         channel->setTopic(newTopic);
 
         std::string fullMessage = ":" + user.getNick() + "!" + user.getUser() + "@" + user.getHostmask() + " TOPIC " + channelName + " :" + newTopic;
-        sendToChannel(NULL, *channel, fullMessage, user);
+        sendToChannel(*channel, fullMessage, user);
 
         return fullMessage;
     }
@@ -1041,8 +1042,7 @@ bool IrcServ::isspecial(char c)
 //check if nick has allowed format
 bool IrcServ::check_nick(std::string nick)
 {
-	bool check;
-	int i = 1;
+	size_t i = 1;
 
 	if (nick.size() > 9 || !(std::isalpha(nick[0]) || isspecial(nick[0])))
 		return (false);

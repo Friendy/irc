@@ -19,7 +19,6 @@ private:
 	std::string _nick;
 	const int _fd;
 	std::string _hostmask;
-	struct sockaddr _addr;
 	bool _isregistered;
 	bool _passgiven;
 	struct sockaddr_in _address;
