@@ -133,8 +133,7 @@ What needs to be done
 
 public:
 	void recieve_msg();
-	void sendToChannel(std::map<User, std::string>* resp, const Channel& channel, const std::string& message, User &user);
-	void addResponse(std::map<User, std::string>* resp, const User& receiver, const std::string& respMessage);
+	void sendToChannel(const Channel& channel, const std::string& message, User &user);
 	std::string listChannelUsers(const std::string &channelName);
 
 	/* ******Connection related functions********** */
