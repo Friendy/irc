@@ -708,12 +708,13 @@ std::string IrcServ::fKick(std::vector<std::string> params, User &user) {
     }
 
     User* targetUser = NULL;
-    for (std::map<int, User*>::iterator it = _users.begin(); it != _users.end(); ++it) {
+    for (std::map<const int, User*>::const_iterator it = _users.begin(); it != _users.end(); ++it) {
         if (it->second->getNick() == targetNick) {
             targetUser = it->second;
             break;
         }
     }
+
 
     if (!targetUser) {
         return buildPriv(":" + _server_name + " " + "461" + " " + user.getNick() + " " + targetNick + " " + "No such nick", channelName, channelName);
