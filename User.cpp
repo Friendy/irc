@@ -7,8 +7,9 @@
 User::User(int fd) : _fd(fd), _isregistered(false), _passgiven(false), _quitstatus(0)
 {
 	_lastactivitytm = time(NULL);
-	_pingsendtm = 0;
+	_pingsendtm = time(NULL);
 	_quitsendtm = 0;
+	_pingsent = false;
 	_buffer = "";
 	_msg_incomplete = false;
 }
@@ -37,8 +38,9 @@ User::User(User const &original) : _fd(original._fd)
 User::User(int fd, const std::string &hostmask) : _fd(fd), _hostmask(hostmask), _isregistered(false), _passgiven(false), _quitstatus(0){
     std::cout << "User created with fd: " << fd << " and hostmask: " << hostmask << std::endl;
 	_lastactivitytm = time(NULL);
-	_pingsendtm = 0;
+	_pingsendtm = time(NULL);
 	_quitsendtm = 0;
+	_pingsent = false;
 	_buffer = "";
 	_msg_incomplete = false;
     memset(&_address, 0, sizeof(_address));
@@ -160,6 +162,16 @@ std::string User::msgAppend(std::string msg, int last)
 	return(_buffer);
 }
 
+void User::setPingSent(bool status)
+{
+	_pingsent = status;
+}
+
+bool User::getPingSent()
+{
+	return(_pingsent);
+}
+
 void User::clearBuffer()
 {
 	_buffer = "";
@@ -180,6 +192,7 @@ const std::string User::getHostmask() const {
 void User::saveLastActivity()
 {
 	_lastactivitytm = time(NULL);
+	_pingsent = false;
 }
 
 time_t User::getLastActivity()

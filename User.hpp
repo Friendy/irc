@@ -30,6 +30,7 @@ private:
 	time_t _pingsendtm;//time when the last ping is sent
 	time_t _quitsendtm;//time when the quit msg is sent to the user
 	bool _msg_incomplete;
+	bool _pingsent;
 	std::string _buffer;
 
 public:
@@ -68,6 +69,8 @@ public:
 
 	double timeSinceActivity();
 	double timeSincePing();
+	void setPingSent(bool status);
+	bool getPingSent();
 	
 
 	bool operator<(const User& other) const {

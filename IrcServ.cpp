@@ -240,20 +240,22 @@ void IrcServ::delete_user(User *user, std::string reason)
 		return;
 	int fd = user->getFd();
     int pollIndex = user->getPollInd();
-
-    // for (nfds_t i = pollIndex; i < _activePoll - 1; ++i) {
-    //     _userPoll[i] = _userPoll[i + 1];
-    //     if (_users[_userPoll[i].fd]) {
-    //         _users[_userPoll[i].fd]->setPollInd(i);
-    //     }
-    // }
-    // --_activePoll;
-
+    for (nfds_t i = pollIndex; i < _activePoll - 1; ++i) {
+        _userPoll[i] = _userPoll[i + 1];
+        if (_users[_userPoll[i].fd]) {
+            _users[_userPoll[i].fd]->setPollInd(i);
+        }
+    }
+    --_activePoll;
+	_userPoll[_activePoll].events = 0;
+	_userPoll[_activePoll].fd = 0;
+	_userPoll[_activePoll].revents = 0;
 	close(fd);
     _nicks.erase(user->getNick());
     delete(user);
     _users.erase(fd);
 	std::cout << "Client " << reason << "(fd " << fd << ").\n";
+	sleep(3);
 }
 
 
@@ -347,8 +349,15 @@ void IrcServ::setRecvFd()
 	nfds_t ind = _startInd;
 	bool ready;
 
+	if (_activePoll == 1)
+	{
+		_curRecvFd = 0;
+		return;
+	}
 	while(!(ready = _userPoll[ind].revents & POLLIN) && ind < _activePoll)
 		ind++;
+	if (ind == _activePoll)
+		ind--;
 	if (ready == true)
 	{
 		if (ind == _activePoll - 1)
@@ -356,6 +365,7 @@ void IrcServ::setRecvFd()
 		else
 			_startInd = ind + 1;
 		_curRecvFd = _userPoll[ind].fd;
+
 		return;
 	}
 	else if (_startInd != 1)
@@ -386,7 +396,8 @@ void IrcServ::recieve_msg()
     currentUser = _users[_curRecvFd];
 	ssize_t bytesReceived = recv(_curRecvFd, buf, MAXMSGSIZE, 0);
 	if (bytesReceived <= 0) {
-        std::cout << "Receive error or client disconnected" << std::endl;
+		std::cout << "Receive error or client disconnected" << std::endl;
+		sleep(1);
         delete_user(currentUser, "disconnected");
         return;
     }
@@ -635,8 +646,7 @@ void IrcServ::checkActivity()
 			delete_user(user, "quitted");
 			continue;
 		}
-		if (user->getPingTime() > 0 && user->timeSincePing() > PONGTIMEOUT
-			&& user->getLastActivity() < user->getPingTime())
+		if (user->getPingSent() == true && user->timeSincePing() > PONGTIMEOUT)
 		{
 			std::cout << " Activity waiting interval exceeded" << std::endl;
 			it++;
@@ -644,14 +654,11 @@ void IrcServ::checkActivity()
 			continue;
 		}
 		else if (user->timeSinceActivity() > PINGINERVAL
-			&& (user->getPingTime() == 0 || user->timeSincePing() > PONGTIMEOUT))
+			&& (user->getPingSent() == false && user->timeSincePing() > PONGTIMEOUT))
 		{
-			std::cout << " t" << user->timeSincePing() << std::endl;
-			std::cout << "ping time" << user->getPingTime() << std::endl;
-			std::cout << "activity time" << user->getLastActivity() << std::endl;
-			std::cout << "since last activity" << user->timeSinceActivity() << std::endl;
-			std::cout << "time since ping" << user->timeSincePing() << std::endl;
+
 			Message msg(buildPing(*user), user->getPollfd());
+			user->setPingSent(true);
 			msg.setPing();
 			_msgQ.push(msg);
 			std::cout << msg.getMsg() << " message added to message queue" << std::endl;
