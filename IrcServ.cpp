@@ -568,15 +568,16 @@ std::string IrcServ::fNick(std::vector<std::string> params, User &user)
 		if (nickfd != 0 && user.getFd() != nickfd)
 			return(buildNotice("Nickname is already in use!", ERR_NICKNAMEINUSE));
 	}
+    std::string msg = ":" + user.getNick() + "!" + user.getName() + " NICK " + params[0];
 	if (oldnick != "")
 		_nicks.erase(oldnick);
 	user.setNick(params[0]);
 	_nicks[params[0]] = user.getFd();
 	if (oldnick != "")
-		return(buildNotice("Your nick has been changed", 0));
+        return (msg);
 	else
 		return(buildNotice("Now for the last step, add username: /quote USER <username>", 0));
-}
+}   
 
 std::string IrcServ::fUser(std::vector<std::string> params, User &user)
 {

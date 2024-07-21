@@ -44,6 +44,9 @@ std::string IrcServ::fMode(std::vector<std::string> params, User &user)
     {
         if (params.size() < 3)
             return buildNotice("Not enough parameters for MODE +l", ERR_NEEDMOREPARAMS);
+        unsigned int userLimit = static_cast<unsigned int>(atoi(params[2].c_str()));
+        if (userLimit <= channel->getUsers().size())
+            return buildNotice("User limit must be greater than the current number of users", ERR_NEEDMOREPARAMS);
         channel->setUserLimit(atoi(params[2].c_str()));
     }
     else if (mode == "-l")
