@@ -175,6 +175,12 @@ void IrcServ::server_start(const char* protname, const char* port, const char* h
         }
 		if (!_users.empty())
 			checkActivity();
+        for (nfds_t i = 0; i < _activePoll; ++i) {
+            if (_userPoll[i].revents & (POLLHUP | POLLERR | POLLNVAL)) {
+                std::cout << "Connection closed or error detected for user on fd " << _userPoll[i].fd << std::endl;
+                delete_user(_users[_userPoll[i].fd], "disconnected");
+            }
+        }
     }
     system("leaks ircserv");
 }
@@ -237,26 +243,27 @@ int IrcServ::getAction()
 void IrcServ::delete_user(User *user, std::string reason)
 {
     if (user == NULL)
-		return;
-	int fd = user->getFd();
+        return;
+    int fd = user->getFd();
     int pollIndex = user->getPollInd();
+
     for (std::map<std::string, Channel*>::iterator it = _channels.begin(); it != _channels.end();) {
         Channel* channel = it->second;
         if (channel->isUserInChannel(*user)) {
             channel->removeUser(*user);
             sendToChannel(*channel, ":" + user->getNick() + "!" + user->getUser() + "@" + user->getHostmask() + " PART " + channel->getName(), *user);
 
-        if (channel->getUsers().empty()) {
-            std::map<std::string, Channel*>::iterator temp = it;
-            ++it;
-            _channels.erase(temp);
-            delete channel;
-            continue;
-        }
-
+            if (channel->getUsers().empty()) {
+                std::map<std::string, Channel*>::iterator temp = it;
+                ++it;
+                _channels.erase(temp);
+                delete channel;
+                continue;
+            }
         }
         ++it;
     }
+
 
     for (nfds_t i = pollIndex; i < _activePoll - 1; ++i) {
         _userPoll[i] = _userPoll[i + 1];
@@ -265,16 +272,30 @@ void IrcServ::delete_user(User *user, std::string reason)
         }
     }
     --_activePoll;
-	_userPoll[_activePoll].events = 0;
-	_userPoll[_activePoll].fd = 0;
-	_userPoll[_activePoll].revents = 0;
-	close(fd);
+    _userPoll[_activePoll].events = 0;
+    _userPoll[_activePoll].fd = 0;
+    _userPoll[_activePoll].revents = 0;
+
+    close(fd);
     _nicks.erase(user->getNick());
     delete(user);
     _users.erase(fd);
-	std::cout << "Client " << reason << "(fd " << fd << ").\n";
-	sleep(3);
+
+
+    std::queue<Message> tempQueue;
+    while (!_msgQ.empty()) {
+        Message msg = _msgQ.front();
+        _msgQ.pop();
+        if (msg.getPollfd()->fd != fd) {
+            tempQueue.push(msg);
+        }
+    }
+    std::swap(_msgQ, tempQueue);
+
+    std::cout << "Client " << reason << " (fd " << fd << ").\n";
+    sleep(3);
 }
+
 
 
 std::string IrcServ::buildPriv(const std::string msg, std::string from, std::string to)
@@ -675,7 +696,6 @@ void IrcServ::checkActivity()
 		else if (user->timeSinceActivity() > PINGINERVAL
 			&& (user->getPingSent() == false && user->timeSincePing() > PONGTIMEOUT))
 		{
-
 			Message msg(buildPing(*user), user->getPollfd());
 			user->setPingSent(true);
 			msg.setPing();
