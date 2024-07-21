@@ -272,6 +272,8 @@ void IrcServ::delete_user(User *user, std::string reason)
         }
     }
     --_activePoll;
+    if (user->getPollInd() < _startInd)
+        --_startInd;
     _userPoll[_activePoll].events = 0;
     _userPoll[_activePoll].fd = 0;
     _userPoll[_activePoll].revents = 0;
@@ -412,7 +414,9 @@ void IrcServ::setRecvFd()
 		ind = 1;
 		while(!(ready = _userPoll[ind].revents & POLLIN) && ind < _startInd)
 			ind++;
-		if (ready == true)
+		if (ind == _startInd)
+		    ind--;
+        if (ready == true)
 		{
 			_startInd = ind + 1;
 			_curRecvFd = _userPoll[ind].fd;
