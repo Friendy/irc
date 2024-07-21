@@ -6,20 +6,11 @@
 /*   By: mrubina <mrubina@student.42heilbronn.de    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/15 17:28:20 by mrubina           #+#    #+#             */
-/*   Updated: 2024/07/21 02:19:55 by mrubina          ###   ########.fr       */
+/*   Updated: 2024/07/21 18:50:37 by mrubina          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "IrcServ.hpp"
-
-// socket, setsockopt, getsockname
-
-// inet_addr, inet_ntoa
-
-// getprotobyname, gethostbyname, getaddrinfo, freeaddrinfo,
-
-// bind, connect, listen, accept,
-// htons, htonl, ntohs, ntohl, ,
 
 void sig_handler(int)
 {

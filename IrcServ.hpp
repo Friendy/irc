@@ -48,37 +48,6 @@ private:
 	std::queue<int> _actionQ;
 	nfds_t 	_startInd;
 	nfds_t 	_curRecvFd;
-	//TODO: update introductory message: should contain:
-	//TODO: user count, server name and version
-
-	/* 
-What needs to be done
-
-	1. polling
-	2. send queue
-	3. nick history
-	4. parsing
-	commands
-	Registration:
-	PASS
-	USER
-	NICK
-	Channels:
-	JOIN
-	KICK
-	INVITE
-	TOPIC
-	Messaging:
-	PRIVMSG
-
-	Quiting:
-	PART
-	QUIT
-
-	Ctrl D for incomplete messages
-
-	 */
-
 
 	/* ******Connection related functions********** */
 	void setupSocket(const char* protname, long port_tmp, struct addrinfo *addr_info);
@@ -92,7 +61,6 @@ What needs to be done
 	std::string buildQuit(User user);
 	std::string buildPing(User user);
 	std::string buildNotice(const std::string msg, int code);
-	std::string buildNoticetest(const std::string msg, int code, User &user, std::string channelName);
 
 	/* ******General message processing functions********** */
 	// std::string processMsg(User &user, std::string msg);

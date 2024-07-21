@@ -240,6 +240,21 @@ void IrcServ::delete_user(User *user, std::string reason)
 		return;
 	int fd = user->getFd();
     int pollIndex = user->getPollInd();
+    for (std::map<std::string, Channel*>::iterator it = _channels.begin(); it != _channels.end();) {
+        Channel* channel = it->second;
+        if (channel->isUserInChannel(*user)) {
+            channel->removeUser(*user);
+            sendToChannel(*channel, ":" + user->getNick() + "!" + user->getUser() + "@" + user->getHostmask() + " PART " + channel->getName(), *user);
+
+            if (channel->getUsers().empty()) {
+                it = _channels.erase(it);
+                delete channel;
+                continue;
+            }
+        }
+        ++it;
+    }
+
     for (nfds_t i = pollIndex; i < _activePoll - 1; ++i) {
         _userPoll[i] = _userPoll[i + 1];
         if (_users[_userPoll[i].fd]) {
@@ -581,15 +596,16 @@ std::string IrcServ::fNick(std::vector<std::string> params, User &user)
 		if (nickfd != 0 && user.getFd() != nickfd)
 			return(buildNotice("Nickname is already in use!", ERR_NICKNAMEINUSE));
 	}
+    std::string msg = ":" + user.getNick() + "!" + user.getName() + " NICK " + params[0];
 	if (oldnick != "")
 		_nicks.erase(oldnick);
 	user.setNick(params[0]);
 	_nicks[params[0]] = user.getFd();
 	if (oldnick != "")
-		return(buildNotice("Your nick has been changed", 0));
+        return (msg);
 	else
 		return(buildNotice("Now for the last step, add username: /quote USER <username>", 0));
-}
+}   
 
 std::string IrcServ::fUser(std::vector<std::string> params, User &user)
 {
@@ -937,7 +953,9 @@ std::string IrcServ::fUnknown(std::vector<std::string> params, User &user)
 
 std::string IrcServ::fQuit(std::vector<std::string>, User &user)
 {
-	return(buildQuit(user));
+    std::string quitMessage = buildQuit(user);
+    delete_user(&user, "disconnected");
+	return(quitMessage);
 }
 
 /* ******Helper functions****** */

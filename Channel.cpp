@@ -46,10 +46,6 @@ void Channel::addUser(User &user) {
 
 void Channel::removeUser(User &user) {
     _users.erase(user.getFd());
-
-    // if (_users.empty()) {
-    //     IrcServ::getInstance().removeChannel(_name);
-    // }
 }
 
 

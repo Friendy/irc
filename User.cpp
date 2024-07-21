@@ -1,9 +1,5 @@
 #include "User.hpp"
 
-/*CONSTRUCTORS*/
-// User::User(){}
-
-
 User::User(int fd) : _fd(fd), _isregistered(false), _passgiven(false), _quitstatus(0)
 {
 	_lastactivitytm = time(NULL);

@@ -1,18 +1,10 @@
 #include "Command.hpp"
 
 /*CONSTRUCTORS*/
-Command::Command()
-{
-	// _command = "TEST";
-	// std::cout << "class created" << std::endl;
-}
 
 Command::Command(std::string command) : _command(command){};
 
-// Command::Command(std_) : _com
-// {
-// 	// std::cout << "class created" << std::endl;
-// }
+
 
 //Assignment operator:
 Command &Command::operator=(Command const &original)
@@ -70,16 +62,6 @@ size_t Command::paramCount()
 	else
 		return(_parameters.size());
 }
-
-// const std::vector<User> Command::getUsers()
-// {
-// 	return(this->_users);
-// }
-
-// void Command::setUsers(std::vector<User> users)
-// {
-// 	this->_users = users;
-// }
 
 /*DESTRUCTOR*/
 Command::~Command(){}
