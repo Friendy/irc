@@ -17,9 +17,6 @@ public:
 	void setParam(std::string param);
 	void replaceCommand(std::string com);
 	size_t paramCount();
-	// void setName(std::string name);
-	// const std::vector<User> getUsers();
-	// void setUsers(std::vector<User> users);
 
 	Command(std::string command);
 	Command();
