@@ -246,11 +246,14 @@ void IrcServ::delete_user(User *user, std::string reason)
             channel->removeUser(*user);
             sendToChannel(*channel, ":" + user->getNick() + "!" + user->getUser() + "@" + user->getHostmask() + " PART " + channel->getName(), *user);
 
-            if (channel->getUsers().empty()) {
-                it = _channels.erase(it);
-                delete channel;
-                continue;
-            }
+        if (channel->getUsers().empty()) {
+            std::map<std::string, Channel*>::iterator temp = it;
+            ++it;
+            _channels.erase(temp);
+            delete channel;
+            continue;
+        }
+
         }
         ++it;
     }
