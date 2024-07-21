@@ -182,7 +182,6 @@ void IrcServ::server_start(const char* protname, const char* port, const char* h
             }
         }
     }
-    system("leaks ircserv");
 }
 
 /* checks if the first message of the send queue can be send or
@@ -295,7 +294,6 @@ void IrcServ::delete_user(User *user, std::string reason)
     std::swap(_msgQ, tempQueue);
 
     std::cout << "Client " << reason << " (fd " << fd << ").\n";
-    sleep(3);
 }
 
 
@@ -440,7 +438,6 @@ void IrcServ::recieve_msg()
 	ssize_t bytesReceived = recv(_curRecvFd, buf, MAXMSGSIZE, 0);
 	if (bytesReceived <= 0) {
 		std::cout << "Receive error or client disconnected" << std::endl;
-		sleep(1);
         delete_user(currentUser, "disconnected");
         return;
     }

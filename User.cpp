@@ -85,7 +85,7 @@ int User::getFd() const
 	return(this->_fd);
 }
 
-int User::getPollInd()
+nfds_t User::getPollInd()
 {
 	return(this->_pollInd);
 }

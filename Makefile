@@ -3,16 +3,14 @@
 #                                                         :::      ::::::::    #
 #    Makefile                                           :+:      :+:    :+:    #
 #                                                     +:+ +:+         +:+      #
-#    By: mrubina <mrubina@student.42heilbronn.de    +#+  +:+       +#+         #
+#    By: ahocuk <ahocuk@student.42heilbronn.de>     +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/11/12 18:35:29 by mrubina           #+#    #+#              #
-#    Updated: 2024/07/20 23:39:13 by mrubina          ###   ########.fr        #
+#    Updated: 2024/07/21 23:13:29 by ahocuk           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
-CXXFLAGS = -std=c++98 -fsanitize=address
-# -Wall -Werror -Wextra
-# -fsanitize=address
+CXXFLAGS = -std=c++98 -Wall -Werror -Wextra
 
 SRC = main.cpp IrcServ.cpp Err.cpp User.cpp Channel.cpp Command.cpp Message.cpp Mode.cpp
 OBJ = $(SRC:.cpp=.o)

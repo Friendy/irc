@@ -23,7 +23,7 @@ private:
 	bool _passgiven;
 	struct sockaddr_in _address;
 	int _quitstatus;
-	int _pollInd; //index of user fd in poll array
+	nfds_t _pollInd; //index of user fd in poll array
 	pollfd *_fdPtr;//pointer to pollfd structure
 	std::vector<Channel*> _channels;
 	time_t _lastactivitytm;//time when the last message is recieved
@@ -44,7 +44,7 @@ public:
 	const std::string getFullName();
 	void setNick(std::string nick);
 	int getFd() const;
-	int getPollInd();
+	nfds_t getPollInd();
 	pollfd *getPollfd();
 	// const std::string getMsg(std::string msg);
 	void registerUser();
