@@ -237,15 +237,30 @@ int IrcServ::getAction()
 void IrcServ::delete_user(User *user, std::string reason)
 {
     int fd = user->getFd();
-    int pollIndex = user->getPollInd();
+    //int pollIndex = user->getPollInd();
 
-    for (nfds_t i = pollIndex; i < _activePoll - 1; ++i) {
-        _userPoll[i] = _userPoll[i + 1];
-        if (_users[_userPoll[i].fd]) {
-            _users[_userPoll[i].fd]->setPollInd(i);
+    for (std::map<std::string, Channel*>::iterator it = _channels.begin(); it != _channels.end();) {
+        Channel* channel = it->second;
+        if (channel->isUserInChannel(*user)) {
+            channel->removeUser(*user);
+            sendToChannel(*channel, ":" + user->getNick() + "!" + user->getUser() + "@" + user->getHostmask() + " PART " + channel->getName(), *user);
+
+            if (channel->getUsers().empty()) {
+                it = _channels.erase(it);
+                delete channel;
+                continue;
+            }
         }
+        ++it;
     }
-    --_activePoll;
+
+    // for (nfds_t i = pollIndex; i < _activePoll - 1; ++i) {
+    //     _userPoll[i] = _userPoll[i + 1];
+    //     if (_users[_userPoll[i].fd]) {
+    //         _users[_userPoll[i].fd]->setPollInd(i);
+    //     }
+    // }
+    // --_activePoll;
 
 	close(fd);
     _nicks.erase(user->getNick());
@@ -922,7 +937,9 @@ std::string IrcServ::fUnknown(std::vector<std::string> params, User &user)
 
 std::string IrcServ::fQuit(std::vector<std::string>, User &user)
 {
-	return(buildQuit(user));
+    std::string quitMessage = buildQuit(user);
+    delete_user(&user, "disconnected");
+	return(quitMessage);
 }
 
 /* ******Helper functions****** */
